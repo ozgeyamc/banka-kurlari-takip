@@ -1,84 +1,236 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
-import pandas as pd
-
 from config.settings import PRODUCTS
-from scrapers.doviz_com import scrape_product
+
+from scrapers.doviz_com import (
+    scrape_all_products,
+)
 
 
-OUTPUT_PATH = Path("data/latest_rates.csv")
+OUTPUT_PATH = Path(
+    "data/latest_rates.csv"
+)
 
 
-def decimal_to_text(value):
+def decimal_text(value):
+
     if value is None:
-        return None
-    return format(value, "f")
+        return ""
+
+    return format(
+        value,
+        "f",
+    )
 
 
-def main():
-    all_rows = []
-    failures = []
+def write_csv(
+    rows: list[dict],
+) -> None:
 
-    print("=== Doviz.com Kur Takip v0.1 ===")
+    OUTPUT_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    for code, cfg in PRODUCTS.items():
-        print(f"[{code}] çekiliyor: {cfg['url']}")
-
-        try:
-            rows = scrape_product(
-                code=code,
-                product=cfg["product"],
-                url=cfg["url"],
-            )
-            all_rows.extend(rows)
-
-            error_count = sum(r["status"] == "ERROR" for r in rows)
-            control_count = sum(r["status"] == "KONTROL" for r in rows)
-
-            print(
-                f"[{code}] {len(rows)} sağlayıcı bulundu | "
-                f"ERROR={error_count} | KONTROL={control_count}"
-            )
-
-        except Exception as exc:
-            failures.append((code, str(exc)))
-            print(f"[{code}] HATA: {exc}")
-
-    if not all_rows:
-        raise SystemExit("Hiç veri çekilemedi. Çalışma başarısız kabul edildi.")
-
-    df = pd.DataFrame(all_rows)
-
-    numeric_cols = [
+    fieldnames = [
+        "scraped_at",
+        "product",
+        "code",
+        "provider",
         "buy",
         "sell",
         "spread",
         "spread_pct",
         "site_spread",
         "site_spread_pct",
+        "source_url",
+        "status",
+        "note",
     ]
 
-    for col in numeric_cols:
-        df[col] = df[col].map(decimal_to_text)
+    with OUTPUT_PATH.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as handle:
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_PATH, index=False, encoding="utf-8-sig")
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+        )
 
-    print(f"\nÇıktı: {OUTPUT_PATH}")
-    print(f"Toplam kayıt: {len(df)}")
-    print("\nÜrün bazında kayıt sayıları:")
-    print(df.groupby(["code", "product"]).size().to_string())
+        writer.writeheader()
 
-    print("\nİlk 15 kayıt:")
-    cols = ["code", "provider", "buy", "sell", "spread", "spread_pct", "status"]
-    print(df[cols].head(15).to_string(index=False))
+        for row in rows:
+
+            output = dict(
+                row
+            )
+
+            for key in (
+                "buy",
+                "sell",
+                "spread",
+                "spread_pct",
+                "site_spread",
+                "site_spread_pct",
+            ):
+
+                output[key] = (
+                    decimal_text(
+                        output.get(
+                            key
+                        )
+                    )
+                )
+
+            writer.writerow(
+                output
+            )
+
+
+def main() -> None:
+
+    print(
+        "=== Doviz.com "
+        "Kur Takip v0.2 ==="
+    )
+
+    print(
+        "Kapsam: "
+        "USD + EUR + GRAM ALTIN"
+    )
+
+    print(
+        "Sağlayıcı filtresi: YOK\n"
+    )
+
+    (
+        rows,
+        failures,
+    ) = scrape_all_products(
+        PRODUCTS
+    )
+
+    if not rows:
+        raise SystemExit(
+            "FATAL: "
+            "Hiç veri çekilemedi."
+        )
+
+    write_csv(
+        rows
+    )
+
+    for code in PRODUCTS:
+
+        product_rows = [
+            row
+            for row in rows
+            if row["code"] == code
+        ]
+
+        print(
+            f"\n[{code}] "
+            f"toplam sağlayıcı: "
+            f"{len(product_rows)}"
+        )
+
+        for row in product_rows:
+
+            print(
+                "  - "
+                f"{row['provider']}"
+            )
+
+        error_count = sum(
+            row["status"] == "ERROR"
+            for row in product_rows
+        )
+
+        control_count = sum(
+            row["status"] == "KONTROL"
+            for row in product_rows
+        )
+
+        print(
+            f"[{code}] "
+            f"ERROR={error_count} | "
+            f"KONTROL={control_count}"
+        )
+
+    print(
+        f"\nToplam kayıt: "
+        f"{len(rows)}"
+    )
+
+    print(
+        f"CSV oluşturuldu: "
+        f"{OUTPUT_PATH}"
+    )
+
+    error_rows = [
+        row
+        for row in rows
+        if row["status"] == "ERROR"
+    ]
+
+    control_rows = [
+        row
+        for row in rows
+        if row["status"] == "KONTROL"
+    ]
+
+    if error_rows:
+
+        print(
+            "\n=== "
+            "ERROR KAYITLARI "
+            "==="
+        )
+
+        for row in error_rows:
+
+            print(
+                f"{row['code']} | "
+                f"{row['provider']} | "
+                f"{row['note']}"
+            )
+
+    if control_rows:
+
+        print(
+            "\n=== "
+            "KONTROL KAYITLARI "
+            "==="
+        )
+
+        for row in control_rows:
+
+            print(
+                f"{row['code']} | "
+                f"{row['provider']} | "
+                f"{row['note']}"
+            )
 
     if failures:
-        print("\nSayfa bazında hatalar:")
-        for code, message in failures:
-            print(f"- {code}: {message}")
+
+        print(
+            "\n=== "
+            "SAYFA HATALARI "
+            "==="
+        )
+
+        for item in failures:
+
+            print(
+                f"{item['code']} | "
+                f"{item['error']}"
+            )
+
         raise SystemExit(2)
 
 
