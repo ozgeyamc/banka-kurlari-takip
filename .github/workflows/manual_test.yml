@@ -1,0 +1,45 @@
+name: Manuel Kur Testi
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo indir
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Paketleri kur
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Chromium kur
+        run: |
+          python -m playwright install --with-deps chromium
+
+      - name: Unit testleri çalıştır
+        run: |
+          python -m unittest discover -s tests -v
+
+      - name: Doviz.com verilerini çek
+        run: |
+          python main.py
+
+      - name: CSV çıktısını yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doviz-kurlari-test
+          path: data/latest_rates.csv
+          if-no-files-found: warn
