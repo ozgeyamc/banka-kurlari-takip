@@ -2,7 +2,24 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 import re
-import unicodedata
+
+
+_TR_MAP = str.maketrans(
+    {
+        "ı": "i",
+        "İ": "i",
+        "ş": "s",
+        "Ş": "s",
+        "ğ": "g",
+        "Ğ": "g",
+        "ü": "u",
+        "Ü": "u",
+        "ö": "o",
+        "Ö": "o",
+        "ç": "c",
+        "Ç": "c",
+    }
+)
 
 
 def clean_text(value: object) -> str:
@@ -12,37 +29,57 @@ def clean_text(value: object) -> str:
 
 
 def normalize_header(value: object) -> str:
-    text = clean_text(value).casefold()
-    text = text.translate(str.maketrans({"ı":"i", "ş":"s", "ğ":"g", "ü":"u", "ö":"o", "ç":"c"}))
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    """
+    Örnek:
+    Alış -> alis
+    Satış -> satis
+    Makas(%) -> makas yuzde
+    """
+    text = clean_text(value).translate(_TR_MAP).lower()
     text = text.replace("%", " yuzde ")
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
 def parse_tr_decimal(value: object) -> Decimal | None:
     """
-    Türkçe sayı biçimlerini Decimal'a çevirir.
+    Türkçe sayı biçimini Decimal'a çevirir.
 
-    Örnek:
-      48,0700  -> Decimal('48.0700')
-      7.119,25 -> Decimal('7119.25')
-      %2,39    -> Decimal('2.39')
-      '-'      -> None
+    48,0700  -> 48.0700
+    7.119,25 -> 7119.25
+    %2,39    -> 2.39
     """
+
     text = clean_text(value)
-    if not text or text in {"-", "—", "–", "N/A", "n/a"}:
+
+    if not text or text.casefold() in {
+        "-",
+        "—",
+        "–",
+        "n/a",
+        "nan",
+        "none",
+    }:
         return None
 
-    text = text.replace("%", "").replace("₺", "").replace("TL", "").strip()
-    text = text.replace(" ", "")
+    text = (
+        text.replace("%", "")
+        .replace("₺", "")
+        .replace("TL", "")
+        .replace("tl", "")
+        .replace(" ", "")
+    )
 
+    # Türkçe biçim:
+    # 7.119,25 -> 7119.25
+    # 48,0700 -> 48.0700
     if "," in text:
         text = text.replace(".", "").replace(",", ".")
+
     elif text.count(".") > 1:
         text = text.replace(".", "")
 
     text = re.sub(r"[^0-9+\-.]", "", text)
+
     if not text:
         return None
 
