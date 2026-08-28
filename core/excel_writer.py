@@ -7,7 +7,6 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
-from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.data_source import (
     NumData,
     NumVal,
@@ -1085,197 +1084,297 @@ def _build_summary_sheet(
         row_no += 1
 
     # -------------------------------------------------
-    # TREND GRAFİĞİ
-    # Ayrı TREND sekmesi yok.
+    # 5 BANKA MAKAS GRAFİKLERİ
     #
-    # ÖNEMLİ:
-    # Excel varsayılan olarak gizli satır/sütunlardaki verileri
-    # grafikte göstermeyebilir. Bu yüzden grafik verisini gizli
-    # X:AA kolonlarına koymuyoruz.
+    # OZET sayfasında artık "o anda en düşük makas kimde?"
+    # grafiği yoktur.
     #
-    # Yardımcı grafik verisi OZET sayfasında grafiğin altında,
-    # A39:D... aralığında tutulur. Böylece Excel'de grafik
-    # kesin olarak görünür.
+    # Bunun yerine sabit olarak şu 5 banka karşılaştırılır:
+    #   - Akbank
+    #   - Garanti BBVA
+    #   - Yapıkredi
+    #   - Ziraat Bankası
+    #   - İş Bankası
+    #
+    # DOLAR / EURO / GRAM ALTIN için üç ayrı grafik vardır.
+    # Her çizgi aynı bankayı temsil ettiği için grafiklerin
+    # anlamı zaman içinde değişmez.
     # -------------------------------------------------
-    trend = _build_trend_data(history)
-
-    helper_start_row = 39
-    helper_headers = [
-        "Çekim Zamanı",
-        "DOLAR",
-        "EURO",
-        "GRAM ALTIN",
+    target_banks = [
+        "Akbank",
+        "Garanti BBVA",
+        "Yapıkredi",
+        "Ziraat Bankası",
+        "İş Bankası",
     ]
 
-    for col, header in enumerate(
-        helper_headers,
-        start=1,
-    ):
-        cell = ws.cell(
-            row=helper_start_row,
-            column=col,
-            value=header,
-        )
-        cell.fill = PatternFill(
-            "solid",
-            fgColor="EAF2F8",
-        )
-        cell.font = Font(
-            bold=True,
-            color="1F4E78",
-        )
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center",
+    product_configs = [
+        (
+            "USD",
+            "DOLAR",
+            "5 Banka - Dolar Makas % Değişimi",
+            39,
+            "H2",
+        ),
+        (
+            "EUR",
+            "EURO",
+            "5 Banka - Euro Makas % Değişimi",
+            50,
+            "H19",
+        ),
+        (
+            "XAU",
+            "GRAM ALTIN",
+            "5 Banka - Gram Altın Makas % Değişimi",
+            61,
+            "H36",
+        ),
+    ]
+
+    # run_at bazında seçili bankaların makas yüzdesini çıkar.
+    bank_trends = {}
+
+    for row in history:
+        provider = (row.get("provider") or "").strip()
+        code = (row.get("code") or "").strip()
+        run_at = row.get("run_at")
+        run_dt = _parse_dt(run_at)
+
+        if provider not in target_banks:
+            continue
+
+        if code not in {"USD", "EUR", "XAU"}:
+            continue
+
+        if not run_at or not run_dt:
+            continue
+
+        if row.get("status") == "ERROR":
+            continue
+
+        spread_pct = _to_float(
+            row.get("spread_pct")
         )
 
-    for helper_row, (
-        trend_dt,
-        values,
-    ) in enumerate(
-        trend,
-        start=helper_start_row + 1,
-    ):
-        ws.cell(
-            helper_row,
-            1,
-            trend_dt.strftime(
-                "%d.%m %H:%M"
-            ),
+        if spread_pct is None:
+            buy = _to_float(row.get("buy"))
+            sell = _to_float(row.get("sell"))
+
+            if (
+                buy not in (None, 0)
+                and sell is not None
+            ):
+                spread_pct = (
+                    (sell - buy) / buy
+                ) * 100.0
+
+        if spread_pct is None:
+            continue
+
+        run_bucket = bank_trends.setdefault(
+            run_at,
+            {
+                "dt": run_dt,
+                "USD": {},
+                "EUR": {},
+                "XAU": {},
+            },
         )
 
-        for col, code in enumerate(
-            ("USD", "EUR", "XAU"),
-            start=2,
-        ):
-            value = values.get(code)
-            cell = ws.cell(
-                helper_row,
-                col,
-            )
-
-            if value is not None:
-                cell.value = value / 100.0
-                cell.number_format = "0.000%"
-
-    if len(trend) >= 2:
-        chart = LineChart()
-        chart.style = 10
-        chart.title = (
-            "Zamana Göre En Düşük Makas % Değişimi"
-        )
-        chart.y_axis.title = (
-            "En Düşük Makas %"
-        )
-        # Tarih/saat etiketleri zaten x eksenini açıklıyor.
-        # Ayrı eksen başlığı legend ile çakışmasın.
-        chart.x_axis.title = None
-        # Grafik özet tablosunun sağında daha geniş/yüksek durur.
-        chart.height = 8.6
-        chart.width = 15.8
-        chart.legend.position = "b"
-
-        helper_end_row = (
-            helper_start_row + len(trend)
+        # CSV'deki spread_pct yüzde biriminde tutulur:
+        # 2.85 = %2,85.
+        run_bucket[code][provider] = (
+            spread_pct / 100.0
         )
 
-        data = Reference(
-            ws,
-            min_col=2,
-            max_col=4,
-            min_row=helper_start_row,
-            max_row=helper_end_row,
-        )
-        cats = Reference(
-            ws,
-            min_col=1,
-            min_row=helper_start_row + 1,
-            max_row=helper_end_row,
-        )
+    trend_runs = sorted(
+        bank_trends.values(),
+        key=lambda item: item["dt"],
+    )
 
-        chart.add_data(
-            data,
-            titles_from_data=True,
-        )
-        chart.set_categories(cats)
+    marker_symbols = [
+        "circle",
+        "square",
+        "triangle",
+        "diamond",
+        "star",
+    ]
 
-        category_values = [
-            trend_dt.strftime("%d.%m %H:%M")
-            for trend_dt, _ in trend
+    for (
+        code,
+        product_name,
+        chart_title,
+        helper_start_row,
+        chart_anchor,
+    ) in product_configs:
+
+        # Grafik veri tablosu görünür hücrelerde tutulur.
+        # Protected View grafikleri için gizli kolon kullanılmaz.
+        helper_headers = [
+            "Çekim Zamanı",
+            *target_banks,
         ]
 
-        cached_series = []
-        for code, title in (
-            ("USD", "DOLAR"),
-            ("EUR", "EURO"),
-            ("XAU", "GRAM ALTIN"),
+        for col, header in enumerate(
+            helper_headers,
+            start=1,
         ):
-            cached_series.append(
-                (
-                    title,
-                    [
-                        (
-                            values.get(code) / 100.0
-                            if values.get(code) is not None
-                            else None
-                        )
-                        for _, values in trend
-                    ],
+            cell = ws.cell(
+                row=helper_start_row,
+                column=col,
+                value=header,
+            )
+            cell.fill = PatternFill(
+                "solid",
+                fgColor="EAF2F8",
+            )
+            cell.font = Font(
+                bold=True,
+                color="1F4E78",
+            )
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+            )
+
+        category_values = []
+        cached_series_values = {
+            bank: []
+            for bank in target_banks
+        }
+
+        for helper_row, run in enumerate(
+            trend_runs,
+            start=helper_start_row + 1,
+        ):
+            label = run["dt"].strftime(
+                "%d.%m %H:%M"
+            )
+            category_values.append(label)
+
+            ws.cell(
+                helper_row,
+                1,
+                label,
+            )
+
+            for bank_col, bank in enumerate(
+                target_banks,
+                start=2,
+            ):
+                value = run[code].get(bank)
+
+                cached_series_values[
+                    bank
+                ].append(value)
+
+                cell = ws.cell(
+                    helper_row,
+                    bank_col,
                 )
-            )
 
-        _cache_line_chart(
-            chart,
-            category_values,
-            cached_series,
-        )
-
-        # EURO ile GRAM ALTIN oranları çoğu zaman birbirine çok yakın.
-        # Çizgiler üst üste gelse bile seriler ayırt edilebilsin diye
-        # her ürüne farklı marker şekli veriyoruz.
-        marker_symbols = ("circle", "square", "triangle")
-        marker_sizes = (7, 8, 8)
-        for series, symbol, size in zip(
-            chart.series,
-            marker_symbols,
-            marker_sizes,
-        ):
-            series.marker.symbol = symbol
-            series.marker.size = size
-
-        # İlk birkaç çekimde değer etiketlerini de göster.
-        # Veri arttığında kalabalık olmaması için otomatik kapanır.
-        if len(trend) <= 5:
-            chart.dLbls = DataLabelList()
-            chart.dLbls.showVal = True
-            chart.dLbls.numFmt = "0.000%"
-
-        try:
-            chart.y_axis.numFmt = "0.000%"
-        except Exception:
-            pass
-
-        # Çok küçük oranlarda çizginin görünür kalması için
-        # ekseni sıfırdan başlat ve mevcut en yüksek değere göre ayarla.
-        chart_values = []
-        for _, values in trend:
-            for code in ("USD", "EUR", "XAU"):
-                value = values.get(code)
                 if value is not None:
-                    chart_values.append(value / 100.0)
+                    cell.value = value
+                    cell.number_format = "0.00%"
 
-        if chart_values:
-            chart.y_axis.scaling.min = 0
-            chart.y_axis.scaling.max = (
-                max(chart_values) * 1.15
+        # En az iki çekim varsa grafik çiz.
+        if len(trend_runs) >= 2:
+            helper_end_row = (
+                helper_start_row
+                + len(trend_runs)
             )
 
-        # H2 anchor: grafik özet tablosunun sağında,
-        # tabloyu kapatmadan ve aşağı kaymadan görünür.
-        ws.add_chart(
-            chart,
-            "H2",
-        )
+            chart = LineChart()
+            chart.style = 10
+            chart.title = chart_title
+            chart.y_axis.title = "Makas %"
+            chart.x_axis.title = None
+            chart.height = 7.4
+            chart.width = 15.5
+            chart.legend.position = "b"
+
+            data = Reference(
+                ws,
+                min_col=2,
+                max_col=6,
+                min_row=helper_start_row,
+                max_row=helper_end_row,
+            )
+            cats = Reference(
+                ws,
+                min_col=1,
+                min_row=helper_start_row + 1,
+                max_row=helper_end_row,
+            )
+
+            chart.add_data(
+                data,
+                titles_from_data=True,
+            )
+            chart.set_categories(cats)
+
+            # Bankalar üst üste gelse bile ayırt edilebilsin.
+            for series, symbol in zip(
+                chart.series,
+                marker_symbols,
+            ):
+                try:
+                    series.marker.symbol = symbol
+                    series.marker.size = 7
+                    series.graphicalProperties.line.width = 22000
+                except Exception:
+                    pass
+
+            # Protected View'de grafiğin boş kalmaması için
+            # seri ve kategori cache'lerini chart XML içine yaz.
+            cached_series = [
+                (
+                    bank,
+                    cached_series_values[bank],
+                )
+                for bank in target_banks
+            ]
+
+            _cache_line_chart(
+                chart,
+                category_values,
+                cached_series,
+            )
+
+            try:
+                chart.y_axis.numFmt = "0.00%"
+            except Exception:
+                pass
+
+            # Ölçeği seçili bankaların gerçek değerlerine göre ayarla.
+            chart_values = [
+                value
+                for bank in target_banks
+                for value in cached_series_values[bank]
+                if value is not None
+            ]
+
+            if chart_values:
+                minimum = min(chart_values)
+                maximum = max(chart_values)
+                padding = max(
+                    (maximum - minimum) * 0.15,
+                    maximum * 0.03,
+                    0.0001,
+                )
+                chart.y_axis.scaling.min = max(
+                    0,
+                    minimum - padding,
+                )
+                chart.y_axis.scaling.max = (
+                    maximum + padding
+                )
+
+            ws.add_chart(
+                chart,
+                chart_anchor,
+            )
 
     _set_widths(
         ws,
@@ -1348,3 +1447,4 @@ def build_excel(
 
     # Her seferinde AYNI dosya yolu güncellenir.
     wb.save(output_path)
+
