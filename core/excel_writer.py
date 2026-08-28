@@ -8,7 +8,7 @@ from typing import Iterable
 from openpyxl import Workbook
 from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.tables import Table, TableStyleInfo
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
