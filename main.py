@@ -1,237 +1,130 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from config.settings import PRODUCTS
-
-from scrapers.doviz_com import (
-    scrape_all_products,
-)
+from core.excel_writer import build_excel
+from scrapers.doviz_com import scrape_all_products
 
 
-OUTPUT_PATH = Path(
-    "data/latest_rates.csv"
-)
+LATEST_PATH = Path("data/latest_rates.csv")
+HISTORY_PATH = Path("data/rates_history.csv")
+EXCEL_PATH = Path("output/banka_kurlari.xlsx")
+
+FIELDNAMES = [
+    "run_at",
+    "scraped_at",
+    "product",
+    "code",
+    "provider",
+    "buy",
+    "sell",
+    "spread",
+    "spread_pct",
+    "site_spread",
+    "site_spread_pct",
+    "source_url",
+    "status",
+    "note",
+]
 
 
 def decimal_text(value):
-
     if value is None:
         return ""
-
-    return format(
-        value,
-        "f",
-    )
+    return format(value, "f")
 
 
-def write_csv(
-    rows: list[dict],
-) -> None:
-
-    OUTPUT_PATH.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    fieldnames = [
-        "scraped_at",
-        "product",
-        "code",
-        "provider",
+def serialize_row(row: dict) -> dict:
+    output = {key: row.get(key, "") for key in FIELDNAMES}
+    for key in (
         "buy",
         "sell",
         "spread",
         "spread_pct",
         "site_spread",
         "site_spread_pct",
-        "source_url",
-        "status",
-        "note",
-    ]
+    ):
+        output[key] = decimal_text(row.get(key))
+    return output
 
-    with OUTPUT_PATH.open(
-        "w",
-        encoding="utf-8-sig",
-        newline="",
-    ) as handle:
 
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=fieldnames,
-        )
-
+def write_latest(rows: list[dict]) -> None:
+    LATEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with LATEST_PATH.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
         writer.writeheader()
-
         for row in rows:
+            writer.writerow(serialize_row(row))
 
-            output = dict(
-                row
-            )
 
-            for key in (
-                "buy",
-                "sell",
-                "spread",
-                "spread_pct",
-                "site_spread",
-                "site_spread_pct",
-            ):
+def append_history(rows: list[dict]) -> None:
+    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    exists = HISTORY_PATH.exists() and HISTORY_PATH.stat().st_size > 0
 
-                output[key] = (
-                    decimal_text(
-                        output.get(
-                            key
-                        )
-                    )
-                )
-
-            writer.writerow(
-                output
-            )
+    with HISTORY_PATH.open("a", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+        if not exists:
+            writer.writeheader()
+        for row in rows:
+            writer.writerow(serialize_row(row))
 
 
 def main() -> None:
+    print("=== Doviz.com Kur Takip v0.3 ===")
+    print("Kapsam: USD + EUR + GRAM ALTIN")
+    print("Sağlayıcı filtresi: YOK\n")
 
-    print(
-        "=== Doviz.com "
-        "Kur Takip v0.2 ==="
-    )
+    run_at = datetime.now(ZoneInfo("Europe/Istanbul")).isoformat(timespec="seconds")
+    rows, failures = scrape_all_products(PRODUCTS)
 
-    print(
-        "Kapsam: "
-        "USD + EUR + GRAM ALTIN"
-    )
-
-    print(
-        "Sağlayıcı filtresi: YOK\n"
-    )
-
-    (
-        rows,
-        failures,
-    ) = scrape_all_products(
-        PRODUCTS
-    )
+    # Sayfa bazında hata varsa eksik snapshot'ı geçmişe yazma.
+    if failures:
+        print("\n=== SAYFA HATALARI ===")
+        for item in failures:
+            print(f"{item['code']} | {item['error']}")
+        raise SystemExit(2)
 
     if not rows:
+        raise SystemExit("FATAL: Hiç veri çekilemedi.")
+
+    found_codes = {row.get("code") for row in rows}
+    missing_codes = set(PRODUCTS) - found_codes
+    if missing_codes:
         raise SystemExit(
-            "FATAL: "
-            "Hiç veri çekilemedi."
+            "FATAL: Şu ürünler tamamen eksik: " + ", ".join(sorted(missing_codes))
         )
 
-    write_csv(
-        rows
-    )
+    for row in rows:
+        row["run_at"] = run_at
+
+    # Veri tam ise çıktıları üret.
+    write_latest(rows)
+    append_history(rows)
+    build_excel(HISTORY_PATH, EXCEL_PATH)
 
     for code in PRODUCTS:
+        product_rows = [row for row in rows if row["code"] == code]
+        error_count = sum(row["status"] == "ERROR" for row in product_rows)
+        control_count = sum(row["status"] == "KONTROL" for row in product_rows)
 
-        product_rows = [
-            row
-            for row in rows
-            if row["code"] == code
-        ]
+        print(f"\n[{code}] toplam sağlayıcı: {len(product_rows)}")
+        print(f"[{code}] ERROR={error_count} | KONTROL={control_count}")
 
-        print(
-            f"\n[{code}] "
-            f"toplam sağlayıcı: "
-            f"{len(product_rows)}"
-        )
+    print(f"\nÇekim zamanı (TR): {run_at}")
+    print(f"Toplam kayıt: {len(rows)}")
+    print(f"Güncel CSV: {LATEST_PATH}")
+    print(f"Geçmiş CSV: {HISTORY_PATH}")
+    print(f"Excel: {EXCEL_PATH}")
 
-        for row in product_rows:
-
-            print(
-                "  - "
-                f"{row['provider']}"
-            )
-
-        error_count = sum(
-            row["status"] == "ERROR"
-            for row in product_rows
-        )
-
-        control_count = sum(
-            row["status"] == "KONTROL"
-            for row in product_rows
-        )
-
-        print(
-            f"[{code}] "
-            f"ERROR={error_count} | "
-            f"KONTROL={control_count}"
-        )
-
-    print(
-        f"\nToplam kayıt: "
-        f"{len(rows)}"
-    )
-
-    print(
-        f"CSV oluşturuldu: "
-        f"{OUTPUT_PATH}"
-    )
-
-    error_rows = [
-        row
-        for row in rows
-        if row["status"] == "ERROR"
-    ]
-
-    control_rows = [
-        row
-        for row in rows
-        if row["status"] == "KONTROL"
-    ]
-
-    if error_rows:
-
-        print(
-            "\n=== "
-            "ERROR KAYITLARI "
-            "==="
-        )
-
-        for row in error_rows:
-
-            print(
-                f"{row['code']} | "
-                f"{row['provider']} | "
-                f"{row['note']}"
-            )
-
+    control_rows = [row for row in rows if row["status"] != "OK"]
     if control_rows:
-
-        print(
-            "\n=== "
-            "KONTROL KAYITLARI "
-            "==="
-        )
-
+        print("\n=== KONTROL / ERROR KAYITLARI ===")
         for row in control_rows:
-
-            print(
-                f"{row['code']} | "
-                f"{row['provider']} | "
-                f"{row['note']}"
-            )
-
-    if failures:
-
-        print(
-            "\n=== "
-            "SAYFA HATALARI "
-            "==="
-        )
-
-        for item in failures:
-
-            print(
-                f"{item['code']} | "
-                f"{item['error']}"
-            )
-
-        raise SystemExit(2)
+            print(f"{row['code']} | {row['provider']} | {row['status']} | {row['note']}")
 
 
 if __name__ == "__main__":
