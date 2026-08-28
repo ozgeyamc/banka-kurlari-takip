@@ -1108,26 +1108,30 @@ def _build_summary_sheet(
         "İş Bankası",
     ]
 
+    # Grafik kaynak tabloları normal görünümden uzak tutuyoruz.
+    # İlk tablo 200. satırdan başlar. Sonraki tablolar, geçmiş
+    # çekim sayısına göre otomatik aşağı kayar; veri büyüdükçe
+    # birbirlerinin üstüne binmezler.
+    helper_base_row = 200
+    helper_gap_rows = 4
+
     product_configs = [
         (
             "USD",
             "DOLAR",
             "5 Banka - Dolar Makas % Değişimi",
-            39,
             "H2",
         ),
         (
             "EUR",
             "EURO",
             "5 Banka - Euro Makas % Değişimi",
-            50,
             "H19",
         ),
         (
             "XAU",
             "GRAM ALTIN",
             "5 Banka - Gram Altın Makas % Değişimi",
-            61,
             "H36",
         ),
     ]
@@ -1201,13 +1205,22 @@ def _build_summary_sheet(
         "star",
     ]
 
-    for (
+    helper_block_height = (
+        len(trend_runs)
+        + 1
+        + helper_gap_rows
+    )
+
+    for product_index, (
         code,
         product_name,
         chart_title,
-        helper_start_row,
         chart_anchor,
-    ) in product_configs:
+    ) in enumerate(product_configs):
+        helper_start_row = (
+            helper_base_row
+            + product_index * helper_block_height
+        )
 
         # Grafik veri tablosu görünür hücrelerde tutulur.
         # Protected View grafikleri için gizli kolon kullanılmaz.
@@ -1447,4 +1460,4 @@ def build_excel(
 
     # Her seferinde AYNI dosya yolu güncellenir.
     wb.save(output_path)
-
+    
