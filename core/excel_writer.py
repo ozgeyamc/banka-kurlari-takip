@@ -7,6 +7,7 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.data_source import (
     NumData,
     NumVal,
@@ -1166,20 +1167,13 @@ def _build_summary_sheet(
         chart.y_axis.title = (
             "En Düşük Makas %"
         )
-        # Tarih/saat etiketleri zaten x eksenini açıkladığı için
-        # ayrıca "Çekim Zamanı" başlığı göstermiyoruz.
-        # Bu, legend ile yazının üst üste binmesini engeller.
+        # Tarih/saat etiketleri zaten x eksenini açıklıyor.
+        # Ayrı eksen başlığı legend ile çakışmasın.
         chart.x_axis.title = None
-        # Grafik daha yüksek/geniş tutulur; alt etiketler ve legend
-        # birbirine girmesin.
+        # Grafik özet tablosunun sağında daha geniş/yüksek durur.
         chart.height = 8.6
         chart.width = 15.8
         chart.legend.position = "b"
-
-        try:
-            chart.x_axis.txPr = None
-        except Exception:
-            pass
 
         helper_end_row = (
             helper_start_row + len(trend)
@@ -1235,6 +1229,26 @@ def _build_summary_sheet(
             category_values,
             cached_series,
         )
+
+        # EURO ile GRAM ALTIN oranları çoğu zaman birbirine çok yakın.
+        # Çizgiler üst üste gelse bile seriler ayırt edilebilsin diye
+        # her ürüne farklı marker şekli veriyoruz.
+        marker_symbols = ("circle", "square", "triangle")
+        marker_sizes = (7, 8, 8)
+        for series, symbol, size in zip(
+            chart.series,
+            marker_symbols,
+            marker_sizes,
+        ):
+            series.marker.symbol = symbol
+            series.marker.size = size
+
+        # İlk birkaç çekimde değer etiketlerini de göster.
+        # Veri arttığında kalabalık olmaması için otomatik kapanır.
+        if len(trend) <= 5:
+            chart.dLbls = DataLabelList()
+            chart.dLbls.showVal = True
+            chart.dLbls.numFmt = "0.000%"
 
         try:
             chart.y_axis.numFmt = "0.000%"
