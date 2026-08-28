@@ -7,6 +7,13 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.data_source import (
+    NumData,
+    NumVal,
+    StrData,
+    StrRef,
+    StrVal,
+)
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -234,6 +241,83 @@ def _history_sort_key(row: dict):
     )
 
 
+
+def _cache_line_chart(
+    chart,
+    categories: list[str],
+    series_values: list[tuple[str, list[float | None]]],
+) -> None:
+    """
+    OpenPyXL chart dosyalarında varsayılan olarak chart cache
+    üretmeyebilir. Excel Protected View modunda kaynak hücreleri
+    yeniden okumadığı için bu durumda grafik boş görünebilir.
+
+    Bu yardımcı fonksiyon grafik başlıklarını, kategori etiketlerini
+    ve sayısal seri değerlerini chart XML içine cache olarak da yazar.
+    Böylece grafik 'Enable Editing' denmeden de görünür.
+    """
+    for series, (title, values) in zip(
+        chart.series,
+        series_values,
+    ):
+        numeric_points = [
+            NumVal(
+                idx=index,
+                v=float(value),
+            )
+            for index, value in enumerate(values)
+            if value is not None
+        ]
+
+        if (
+            series.val is not None
+            and series.val.numRef is not None
+        ):
+            series.val.numRef.numCache = NumData(
+                formatCode="0.000%",
+                ptCount=len(values),
+                pt=numeric_points,
+            )
+
+        if series.cat is not None:
+            category_formula = None
+
+            if series.cat.numRef is not None:
+                category_formula = series.cat.numRef.f
+            elif series.cat.strRef is not None:
+                category_formula = series.cat.strRef.f
+
+            series.cat.numRef = None
+            series.cat.strRef = StrRef(
+                f=category_formula,
+                strCache=StrData(
+                    ptCount=len(categories),
+                    pt=[
+                        StrVal(
+                            idx=index,
+                            v=str(value),
+                        )
+                        for index, value
+                        in enumerate(categories)
+                    ],
+                ),
+            )
+
+        if (
+            series.tx is not None
+            and series.tx.strRef is not None
+        ):
+            series.tx.strRef.strCache = StrData(
+                ptCount=1,
+                pt=[
+                    StrVal(
+                        idx=0,
+                        v=title,
+                    )
+                ],
+            )
+
+
 def _build_trend_data(
     history: list[dict],
 ) -> list[tuple[datetime, dict[str, float | None]]]:
@@ -375,6 +459,10 @@ def _build_current_sheet(
 
             buy = _to_float(item.get("buy"))
             sell = _to_float(item.get("sell"))
+            spread = _to_float(item.get("spread"))
+            spread_pct = _to_float(
+                item.get("spread_pct")
+            )
 
             if buy is not None:
                 ws.cell(excel_row, buy_col, buy)
@@ -382,42 +470,41 @@ def _build_current_sheet(
             if sell is not None:
                 ws.cell(excel_row, sell_col, sell)
 
-            buy_letter = ws.cell(
-                1,
-                buy_col,
-            ).column_letter
-            sell_letter = ws.cell(
-                1,
-                sell_col,
-            ).column_letter
-            spread_letter = ws.cell(
-                1,
-                spread_col,
-            ).column_letter
+            # Protected View düzeltmesi:
+            # Makas ve Makas % hücrelerine Excel formülü
+            # yazmıyoruz. Scraper'ın hesapladığı sayısal
+            # değerleri doğrudan kaydediyoruz.
+            #
+            # Böylece kullanıcı "Enable Editing" demeden de
+            # değerleri görebilir.
+            if (
+                spread is None
+                and buy is not None
+                and sell is not None
+            ):
+                spread = sell - buy
 
-            ws.cell(
-                excel_row,
-                spread_col,
-                (
-                    f'=IF(OR('
-                    f'{buy_letter}{excel_row}="",'
-                    f'{sell_letter}{excel_row}=""),'
-                    f'"",'
-                    f'{sell_letter}{excel_row}-'
-                    f'{buy_letter}{excel_row})'
-                ),
-            )
+            if (
+                spread_pct is None
+                and spread is not None
+                and buy not in (None, 0)
+            ):
+                # CSV'deki spread_pct yüzde birimindedir.
+                spread_pct = (spread / buy) * 100.0
 
-            ws.cell(
-                excel_row,
-                pct_col,
-                (
-                    f'=IFERROR('
-                    f'{spread_letter}{excel_row}/'
-                    f'{buy_letter}{excel_row},'
-                    f'"")'
-                ),
-            )
+            if spread is not None:
+                ws.cell(
+                    excel_row,
+                    spread_col,
+                    spread,
+                )
+
+            if spread_pct is not None:
+                ws.cell(
+                    excel_row,
+                    pct_col,
+                    spread_pct / 100.0,
+                )
 
         ws.cell(excel_row, 1).number_format = "dd.mm.yyyy"
         ws.cell(excel_row, 2).number_format = "hh:mm:ss"
@@ -544,12 +631,30 @@ def _build_history_sheet(
 
         buy = _to_float(item.get("buy"))
         sell = _to_float(item.get("sell"))
+        spread = _to_float(item.get("spread"))
+        spread_pct = _to_float(
+            item.get("spread_pct")
+        )
         site_spread = _to_float(
             item.get("site_spread")
         )
         site_spread_pct = _to_float(
             item.get("site_spread_pct")
         )
+
+        if (
+            spread is None
+            and buy is not None
+            and sell is not None
+        ):
+            spread = sell - buy
+
+        if (
+            spread_pct is None
+            and spread is not None
+            and buy not in (None, 0)
+        ):
+            spread_pct = (spread / buy) * 100.0
 
         raw_status = item.get("status", "")
 
@@ -592,24 +697,20 @@ def _build_history_sheet(
             sell if sell is not None else "",
         )
 
+        # Protected View'de de görünmesi için
+        # hesaplanan değerleri formül yerine sayı olarak yaz.
         ws.cell(
             excel_row,
             7,
-            (
-                f'=IF(OR('
-                f'E{excel_row}="",'
-                f'F{excel_row}=""),'
-                f'"",'
-                f'F{excel_row}-E{excel_row})'
-            ),
+            spread if spread is not None else "",
         )
         ws.cell(
             excel_row,
             8,
             (
-                f'=IFERROR('
-                f'G{excel_row}/E{excel_row},'
-                f'"")'
+                spread_pct / 100.0
+                if spread_pct is not None
+                else ""
             ),
         )
 
@@ -1068,8 +1169,9 @@ def _build_summary_sheet(
         chart.x_axis.title = (
             "Çekim Zamanı"
         )
-        chart.height = 8.5
-        chart.width = 17
+        # Grafik özet tablosunun sağında sabit boyutta durur.
+        chart.height = 7.2
+        chart.width = 13.8
         chart.legend.position = "b"
 
         helper_end_row = (
@@ -1096,14 +1198,62 @@ def _build_summary_sheet(
         )
         chart.set_categories(cats)
 
+        category_values = [
+            trend_dt.strftime("%d.%m %H:%M")
+            for trend_dt, _ in trend
+        ]
+
+        cached_series = []
+        for code, title in (
+            ("USD", "DOLAR"),
+            ("EUR", "EURO"),
+            ("XAU", "GRAM ALTIN"),
+        ):
+            cached_series.append(
+                (
+                    title,
+                    [
+                        (
+                            values.get(code) / 100.0
+                            if values.get(code) is not None
+                            else None
+                        )
+                        for _, values in trend
+                    ],
+                )
+            )
+
+        _cache_line_chart(
+            chart,
+            category_values,
+            cached_series,
+        )
+
         try:
             chart.y_axis.numFmt = "0.000%"
         except Exception:
             pass
 
+        # Çok küçük oranlarda çizginin görünür kalması için
+        # ekseni sıfırdan başlat ve mevcut en yüksek değere göre ayarla.
+        chart_values = []
+        for _, values in trend:
+            for code in ("USD", "EUR", "XAU"):
+                value = values.get(code)
+                if value is not None:
+                    chart_values.append(value / 100.0)
+
+        if chart_values:
+            chart.y_axis.scaling.min = 0
+            chart.y_axis.scaling.max = (
+                max(chart_values) * 1.15
+            )
+
+        # H2 anchor: grafik özet tablosunun sağında,
+        # tabloyu kapatmadan ve aşağı kaymadan görünür.
         ws.add_chart(
             chart,
-            "A17",
+            "H2",
         )
 
     _set_widths(
@@ -1168,13 +1318,6 @@ def build_excel(
 
     # Excel açıldığında GUNCEL_KURLAR açılsın.
     wb.active = 0
-
-    try:
-        wb.calculation.fullCalcOnLoad = True
-        wb.calculation.forceFullCalc = True
-        wb.calculation.calcMode = "auto"
-    except Exception:
-        pass
 
     output_path = Path(output_path)
     output_path.parent.mkdir(
