@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Her gün Türkiye saatiyle 08:17.
-    # Saat başı Actions yoğunluğundan kaçınmak için :17.
-    - cron: "17 8 * * *"
+    # Her gün Türkiye saatiyle 10:17.
+    # GitHub Actions saat başında daha yoğun olabildiği için
+    # 10:00 yerine 10:17 seçildi.
+    - cron: "17 10 * * *"
       timezone: "Europe/Istanbul"
 
 permissions:
@@ -49,20 +50,15 @@ jobs:
         run: |
           python main.py
 
-      - name: Excel ve CSV dosyalarını artifact olarak yükle
+      - name: Excel'i Actions yedeği olarak yükle
         uses: actions/upload-artifact@v4
         with:
-          # Action geçmişinde yedek olarak kalır.
-          # Ana kalıcı dosya yine output/banka_kurlari.xlsx'tir.
           name: banka-kurlari
-          path: |
-            output/banka_kurlari.xlsx
-            data/latest_rates.csv
-            data/rates_history.csv
+          path: output/banka_kurlari.xlsx
           if-no-files-found: error
           retention-days: 30
 
-      - name: Güncel verileri aynı repoya kaydet
+      - name: Güncel geçmişi ve Excel'i repoya kaydet
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -74,16 +70,25 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "Kaydedilecek yeni değişiklik yok."
-            exit 0
+          else
+            git commit -m "Günlük kur verisi: $(TZ='Europe/Istanbul' date +'%d.%m.%Y %H:%M')"
+
+            echo "Remote main kontrol ediliyor..."
+            git fetch origin main
+
+            echo "En güncel main üzerine rebase yapılıyor..."
+            git rebase origin/main
+
+            echo "Geçmiş ve tek kalıcı Excel repoya gönderiliyor..."
+            git push origin HEAD:main
           fi
 
-          git commit -m "Günlük kur verisi: $(TZ='Europe/Istanbul' date +'%d.%m.%Y %H:%M')"
-
-          echo "Remote main kontrol ediliyor..."
-          git fetch origin main
-
-          echo "En güncel main üzerine rebase yapılıyor..."
-          git rebase origin/main
-
-          echo "Tek kalıcı geçmiş ve Excel repoya gönderiliyor..."
-          git push origin HEAD:main
+      - name: Excel'i e-posta ile gönder
+        env:
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: |
+          python send_report.py
