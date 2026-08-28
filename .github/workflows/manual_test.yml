@@ -1,10 +1,17 @@
-name: Manuel Kur Testi
+name: Kur Takip - Manuel ve Günlük
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "15 10 * * 1-5"
+      timezone: "Europe/Istanbul"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: banka-kurlari-daily
+  cancel-in-progress: false
 
 jobs:
   scrape:
@@ -32,14 +39,28 @@ jobs:
         run: |
           python -m unittest discover -s tests -v
 
-      - name: Doviz.com verilerini çek
+      - name: Kurları çek ve Excel oluştur
         run: |
           python main.py
 
-      - name: CSV çıktısını yükle
-        if: always()
+      - name: Excel ve CSV dosyalarını artifact olarak yükle
         uses: actions/upload-artifact@v4
         with:
-          name: doviz-kurlari-test
-          path: data/latest_rates.csv
-          if-no-files-found: warn
+          name: banka-kurlari-${{ github.run_number }}
+          path: |
+            output/banka_kurlari.xlsx
+            data/latest_rates.csv
+            data/rates_history.csv
+          if-no-files-found: error
+
+      - name: Güncel verileri repoya kaydet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/latest_rates.csv data/rates_history.csv output/banka_kurlari.xlsx
+          if git diff --cached --quiet; then
+            echo "Kaydedilecek yeni değişiklik yok."
+          else
+            git commit -m "Günlük kur verisi: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git push
+          fi
