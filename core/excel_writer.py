@@ -34,11 +34,66 @@ STATUS_LABELS = {
     "ERROR": "HATA",
 }
 
+PROVIDER_COLORS = {
+    'Akbank': 'ECCACA',
+    'Albaraka Türk': 'DFF1E4',
+    'Alternatif Bank': 'DECDEA',
+    'Altınkaynak': 'F3F0DD',
+    'Anadolubank': 'CDE5EA',
+    'CEPTETEB': 'F1DFE9',
+    'Denizbank': 'D3ECCA',
+    'DestekBank': 'E0DFF1',
+    'Dünya Katılım': 'EAD7CD',
+    'Emlak Katılım': 'DDF3EB',
+    'Enpara': 'E7CDEA',
+    'Fibabanka': 'EDF1DF',
+    'Garanti BBVA': 'CADBEC',
+    'Getirfinans': 'F1DFE3',
+    'Halkbank': 'CDEACF',
+    'Harem': 'E5DDF3',
+    'Hayat Finans': 'EAE0CD',
+    'Hepsipay': 'DFF1F1',
+    'HSBC': 'ECCAE4',
+    'ING Bank': 'E7F1DF',
+    'İş Bankası': 'CDD2EA',
+    'Kapalıçarşı': 'F3E0DD',
+    'Kuveyt Türk': 'CDEAD9',
+    'Merkez Bankası': 'ECDFF1',
+    'Misyon Bank': 'ECECCA',
+    'Odacı': 'DFECF1',
+    'Odeabank': 'EACDD9',
+    'Papara': 'E0F3DD',
+    'QNB Finansbank': 'D2CDEA',
+    'TOM Bank Hadi': 'F1E7DF',
+    'Türkiye Finans': 'CAECE4',
+    'Vakıf Katılım': 'F1DFF0',
+    'Vakıfbank': 'E0EACD',
+    'Venüs': 'DDE5F3',
+    'Yapıkredi': 'EACDCF',
+    'Ziraat Bankası': 'DFF1E3',
+    'Ziraat Dinamik': 'DBCAEC',
+    'Ziraat Katılım': 'F1EDDF',
+}
+
+DEFAULT_PROVIDER_COLOR = 'E8EDF3'
+
 PRODUCT_ORDER = {
     "USD": 0,
     "EUR": 1,
     "XAU": 2,
 }
+
+
+
+def _provider_fill(provider: str | None):
+    color = PROVIDER_COLORS.get(
+        (provider or "").strip(),
+        DEFAULT_PROVIDER_COLOR,
+    )
+    return PatternFill(
+        "solid",
+        fgColor=color,
+    )
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -293,7 +348,13 @@ def _build_current_sheet(
             if run_dt
             else "",
         )
-        ws.cell(excel_row, 3, provider)
+        provider_cell = ws.cell(
+            excel_row,
+            3,
+            provider,
+        )
+        provider_cell.fill = _provider_fill(provider)
+        provider_cell.font = Font(bold=True)
 
         layout = {
             "USD": (4, 5, 6, 7),
@@ -504,11 +565,17 @@ def _build_history_sheet(
             if run_dt
             else "",
         )
-        ws.cell(
+        provider_name = item.get("provider", "")
+        provider_cell = ws.cell(
             excel_row,
             3,
-            item.get("provider", ""),
+            provider_name,
         )
+        provider_cell.fill = _provider_fill(
+            provider_name
+        )
+        provider_cell.font = Font(bold=True)
+
         ws.cell(
             excel_row,
             4,
@@ -918,10 +985,19 @@ def _build_summary_sheet(
     # -------------------------------------------------
     # TREND GRAFİĞİ
     # Ayrı TREND sekmesi yok.
-    # Yardımcı veriler OZET'in gizli X:AA kolonlarında.
+    #
+    # ÖNEMLİ:
+    # Excel varsayılan olarak gizli satır/sütunlardaki verileri
+    # grafikte göstermeyebilir. Bu yüzden grafik verisini gizli
+    # X:AA kolonlarına koymuyoruz.
+    #
+    # Yardımcı grafik verisi OZET sayfasında grafiğin altında,
+    # A39:D... aralığında tutulur. Böylece Excel'de grafik
+    # kesin olarak görünür.
     # -------------------------------------------------
     trend = _build_trend_data(history)
 
+    helper_start_row = 39
     helper_headers = [
         "Çekim Zamanı",
         "DOLAR",
@@ -929,16 +1005,26 @@ def _build_summary_sheet(
         "GRAM ALTIN",
     ]
 
-    helper_start_col = 24  # X
-
-    for index, header in enumerate(
+    for col, header in enumerate(
         helper_headers,
-        helper_start_col,
+        start=1,
     ):
-        ws.cell(
-            row=1,
-            column=index,
+        cell = ws.cell(
+            row=helper_start_row,
+            column=col,
             value=header,
+        )
+        cell.fill = PatternFill(
+            "solid",
+            fgColor="EAF2F8",
+        )
+        cell.font = Font(
+            bold=True,
+            color="1F4E78",
+        )
+        cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
         )
 
     for helper_row, (
@@ -946,49 +1032,35 @@ def _build_summary_sheet(
         values,
     ) in enumerate(
         trend,
-        start=2,
+        start=helper_start_row + 1,
     ):
-        # Kategoriyi metin yaparak grafikte
-        # tarih+saatin okunaklı görünmesini sağlıyoruz.
         ws.cell(
             helper_row,
-            helper_start_col,
+            1,
             trend_dt.strftime(
                 "%d.%m %H:%M"
             ),
         )
 
-        for offset, code in enumerate(
+        for col, code in enumerate(
             ("USD", "EUR", "XAU"),
-            start=1,
+            start=2,
         ):
             value = values.get(code)
             cell = ws.cell(
                 helper_row,
-                helper_start_col + offset,
+                col,
             )
 
             if value is not None:
                 cell.value = value / 100.0
                 cell.number_format = "0.000%"
 
-    # Yardımcı kolonları kullanıcı görmesin.
-    for col_letter in (
-        "X",
-        "Y",
-        "Z",
-        "AA",
-    ):
-        ws.column_dimensions[
-            col_letter
-        ].hidden = True
-
     if len(trend) >= 2:
         chart = LineChart()
         chart.style = 10
         chart.title = (
-            "Çekim Zamanına Göre "
-            "En Düşük Makas %"
+            "Zamana Göre En Düşük Makas % Değişimi"
         )
         chart.y_axis.title = (
             "En Düşük Makas %"
@@ -996,22 +1068,26 @@ def _build_summary_sheet(
         chart.x_axis.title = (
             "Çekim Zamanı"
         )
-        chart.height = 7
-        chart.width = 14
+        chart.height = 8.5
+        chart.width = 17
         chart.legend.position = "b"
+
+        helper_end_row = (
+            helper_start_row + len(trend)
+        )
 
         data = Reference(
             ws,
-            min_col=25,
-            max_col=27,
-            min_row=1,
-            max_row=len(trend) + 1,
+            min_col=2,
+            max_col=4,
+            min_row=helper_start_row,
+            max_row=helper_end_row,
         )
         cats = Reference(
             ws,
-            min_col=24,
-            min_row=2,
-            max_row=len(trend) + 1,
+            min_col=1,
+            min_row=helper_start_row + 1,
+            max_row=helper_end_row,
         )
 
         chart.add_data(
@@ -1027,7 +1103,7 @@ def _build_summary_sheet(
 
         ws.add_chart(
             chart,
-            "H3",
+            "A17",
         )
 
     _set_widths(
