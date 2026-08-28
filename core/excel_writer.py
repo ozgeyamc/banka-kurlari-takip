@@ -1166,13 +1166,20 @@ def _build_summary_sheet(
         chart.y_axis.title = (
             "En Düşük Makas %"
         )
-        chart.x_axis.title = (
-            "Çekim Zamanı"
-        )
-        # Grafik özet tablosunun sağında sabit boyutta durur.
-        chart.height = 7.2
-        chart.width = 13.8
+        # Tarih/saat etiketleri zaten x eksenini açıkladığı için
+        # ayrıca "Çekim Zamanı" başlığı göstermiyoruz.
+        # Bu, legend ile yazının üst üste binmesini engeller.
+        chart.x_axis.title = None
+        # Grafik daha yüksek/geniş tutulur; alt etiketler ve legend
+        # birbirine girmesin.
+        chart.height = 8.6
+        chart.width = 15.8
         chart.legend.position = "b"
+
+        try:
+            chart.x_axis.txPr = None
+        except Exception:
+            pass
 
         helper_end_row = (
             helper_start_row + len(trend)
