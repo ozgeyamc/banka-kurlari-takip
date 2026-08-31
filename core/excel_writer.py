@@ -1084,22 +1084,22 @@ def _build_summary_sheet(
         row_no += 1
 
     # -------------------------------------------------
-    # HER BANKA İÇİN AYRI MAKAS GRAFİĞİ
+    # 15 AYRI GRAFİK: HER BANKA x HER ÜRÜN
     #
-    # OZET sayfasında şu 5 banka ayrı ayrı izlenir:
-    #   - Akbank
-    #   - Garanti BBVA
-    #   - Yapıkredi
-    #   - Ziraat Bankası
-    #   - İş Bankası
+    # OZET sayfasında toplam 15 grafik vardır.
     #
-    # Her bankanın TEK grafiğinde üç seri vardır:
-    #   - DOLAR Makas %
-    #   - EURO Makas %
-    #   - GRAM ALTIN Makas %
+    # Her banka için üç AYRI grafik YAN YANA:
+    #   DOLAR | EURO | GRAM ALTIN
     #
-    # Böylece aynı bankanın üç üründeki makas hareketi
-    # zaman içinde tek grafikten okunabilir.
+    # Satırlar:
+    #   Akbank
+    #   Garanti BBVA
+    #   Yapıkredi
+    #   Ziraat Bankası
+    #   İş Bankası
+    #
+    # Böylece her grafikte yalnızca tek ürünün zaman içindeki
+    # makas değişimi görünür ve grafikler birbirine karışmaz.
     # -------------------------------------------------
     target_banks = [
         "Akbank",
@@ -1109,28 +1109,17 @@ def _build_summary_sheet(
         "İş Bankası",
     ]
 
-    product_labels = {
-        "USD": "DOLAR",
-        "EUR": "EURO",
-        "XAU": "GRAM ALTIN",
-    }
+    product_configs = [
+        ("USD", "DOLAR"),
+        ("EUR", "EURO"),
+        ("XAU", "GRAM ALTIN"),
+    ]
 
-    # Grafikler tek sütunda alt alta tutulur.
-    # Böylece yatay kaydırma gerekmez.
-    chart_anchors = {
-        "Akbank": "H2",
-        "Garanti BBVA": "H19",
-        "Yapıkredi": "H36",
-        "Ziraat Bankası": "H53",
-        "İş Bankası": "H70",
-    }
-
-    # Grafik kaynak tabloları görünür fakat normal kullanımdan
-    # uzakta, 200. satırdan sonra tutulur.
+    # Grafik veri tabloları normal kullanım alanından uzakta.
     helper_base_row = 200
-    helper_gap_rows = 4
+    helper_gap_rows = 3
 
-    # run_at -> banka -> ürün -> Makas % şeklinde veri hazırla.
+    # run_at -> banka -> ürün -> Makas %
     bank_trends = {}
 
     for row in history:
@@ -1185,8 +1174,7 @@ def _build_summary_sheet(
             {},
         )
 
-        # CSV'deki spread_pct yüzde birimindedir:
-        # 2.85 = %2,85. Excel'e 0.0285 yazıyoruz.
+        # Excel yüzde hücresine 0.0285 = %2,85 yazılır.
         bank_bucket[code] = (
             spread_pct / 100.0
         )
@@ -1196,11 +1184,35 @@ def _build_summary_sheet(
         key=lambda item: item["dt"],
     )
 
+    # Her banka için yardımcı tabloda 4 kolon:
+    # zaman + DOLAR + EURO + GRAM ALTIN
     helper_block_height = (
         len(trend_runs)
         + 1
         + helper_gap_rows
     )
+
+    # Grafik konumları:
+    # Her banka bir satır, üç ürün yan yana.
+    #
+    # A:G   -> DOLAR
+    # H:N   -> EURO
+    # O:U   -> GRAM ALTIN
+    #
+    # Her banka satırı 17 Excel satırı yüksekliğinde.
+    chart_columns = [
+        ("A", "G"),
+        ("H", "N"),
+        ("O", "U"),
+    ]
+
+    chart_row_starts = [
+        17,
+        35,
+        53,
+        71,
+        89,
+    ]
 
     for bank_index, bank in enumerate(
         target_banks
@@ -1240,7 +1252,7 @@ def _build_summary_sheet(
             )
 
         category_values = []
-        cached_series_values = {
+        cached_values = {
             "USD": [],
             "EUR": [],
             "XAU": [],
@@ -1270,10 +1282,7 @@ def _build_summary_sheet(
                 start=2,
             ):
                 value = bank_values.get(code)
-
-                cached_series_values[
-                    code
-                ].append(value)
+                cached_values[code].append(value)
 
                 cell = ws.cell(
                     helper_row,
@@ -1284,28 +1293,39 @@ def _build_summary_sheet(
                     cell.value = value
                     cell.number_format = "0.00%"
 
-        # En az iki çekim olduğunda zaman grafiği anlamlıdır.
-        if len(trend_runs) >= 2:
-            helper_end_row = (
-                helper_start_row
-                + len(trend_runs)
-            )
+        if len(trend_runs) < 2:
+            continue
+
+        helper_end_row = (
+            helper_start_row
+            + len(trend_runs)
+        )
+
+        # Aynı banka için üç ürün ayrı ayrı grafiklenir.
+        for product_index, (
+            code,
+            product_name,
+        ) in enumerate(product_configs):
 
             chart = LineChart()
             chart.style = 10
             chart.title = (
-                f"{bank} - Dolar / Euro / Gram Altın Makas %"
+                f"{bank} - {product_name} Makas %"
             )
             chart.y_axis.title = "Makas %"
             chart.x_axis.title = None
-            chart.height = 7.4
-            chart.width = 15.5
-            chart.legend.position = "b"
+            chart.height = 7.0
+            chart.width = 10.0
+
+            # Tek seri olduğu için legend gereksiz.
+            chart.legend = None
+
+            data_col = 2 + product_index
 
             data = Reference(
                 ws,
-                min_col=2,
-                max_col=4,
+                min_col=data_col,
+                max_col=data_col,
                 min_row=helper_start_row,
                 max_row=helper_end_row,
             )
@@ -1322,40 +1342,33 @@ def _build_summary_sheet(
             )
             chart.set_categories(cats)
 
-            # Ürünler üst üste yaklaşırsa işaretçilerden seçilsin.
-            for series, symbol in zip(
-                chart.series,
-                (
-                    "circle",
-                    "square",
-                    "triangle",
-                ),
-            ):
-                try:
-                    series.marker.symbol = symbol
-                    series.marker.size = 7
-                    series.graphicalProperties.line.width = 22000
-                except Exception:
-                    pass
+            # Her ürün için farklı işaretçi.
+            marker_symbol = (
+                "circle"
+                if code == "USD"
+                else "square"
+                if code == "EUR"
+                else "triangle"
+            )
 
-            # Protected View'de de çizgiler görünsün diye
-            # chart cache içerisine gerçek değerleri yaz.
-            cached_series = [
-                (
-                    product_labels[code],
-                    cached_series_values[code],
-                )
-                for code in (
-                    "USD",
-                    "EUR",
-                    "XAU",
-                )
-            ]
+            try:
+                series = chart.series[0]
+                series.marker.symbol = marker_symbol
+                series.marker.size = 7
+                series.graphicalProperties.line.width = 22000
+            except Exception:
+                pass
 
+            # Protected View'de grafik boş kalmasın.
             _cache_line_chart(
                 chart,
                 category_values,
-                cached_series,
+                [
+                    (
+                        product_name,
+                        cached_values[code],
+                    )
+                ],
             )
 
             try:
@@ -1363,15 +1376,10 @@ def _build_summary_sheet(
             except Exception:
                 pass
 
-            # Her banka kendi veri aralığına göre ölçeklenir.
+            # Her tekil grafiğin ölçeği kendi ürününe göre ayarlanır.
             chart_values = [
                 value
-                for code in (
-                    "USD",
-                    "EUR",
-                    "XAU",
-                )
-                for value in cached_series_values[code]
+                for value in cached_values[code]
                 if value is not None
             ]
 
@@ -1379,10 +1387,11 @@ def _build_summary_sheet(
                 minimum = min(chart_values)
                 maximum = max(chart_values)
                 padding = max(
-                    (maximum - minimum) * 0.15,
-                    maximum * 0.03,
-                    0.0001,
+                    (maximum - minimum) * 0.20,
+                    maximum * 0.02,
+                    0.00005,
                 )
+
                 chart.y_axis.scaling.min = max(
                     0,
                     minimum - padding,
@@ -1391,9 +1400,17 @@ def _build_summary_sheet(
                     maximum + padding
                 )
 
+            start_col, end_col = (
+                chart_columns[product_index]
+            )
+            start_row = (
+                chart_row_starts[bank_index]
+            )
+            end_row = start_row + 15
+
             ws.add_chart(
                 chart,
-                chart_anchors[bank],
+                f"{start_col}{start_row}",
             )
 
     _set_widths(
