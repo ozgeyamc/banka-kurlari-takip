@@ -7,6 +7,7 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.data_source import (
     NumData,
     NumVal,
@@ -1115,6 +1116,9 @@ def _build_summary_sheet(
         ("XAU", "GRAM ALTIN"),
     ]
 
+    # Bu bölüm dışında OZET sayfasına başka/eski grafik eklenmez.
+    # Toplam grafik sayısı tam olarak 5 banka x 3 ürün = 15'tir.
+
     # Grafik veri tabloları normal kullanım alanından uzakta.
     helper_base_row = 200
     helper_gap_rows = 3
@@ -1206,12 +1210,14 @@ def _build_summary_sheet(
         ("O", "U"),
     ]
 
+    # Tüm banka satırları arasında eşit dikey boşluk:
+    # grafik başlangıçları her seferinde tam 20 satır ilerler.
     chart_row_starts = [
-        17,
-        35,
-        53,
-        71,
-        89,
+        18,
+        38,
+        58,
+        78,
+        98,
     ]
 
     for bank_index, bank in enumerate(
@@ -1358,6 +1364,19 @@ def _build_summary_sheet(
                 series.graphicalProperties.line.width = 22000
             except Exception:
                 pass
+
+            # Her veri noktasının üstünde rakamsal yüzde değeri göster:
+            # ör. %2,85 / %0,09.
+            #
+            # Tek seri olduğu için etiketler hangi ürüne ait olduğu
+            # konusunda karışıklık yaratmaz.
+            chart.dLbls = DataLabelList()
+            chart.dLbls.showVal = True
+            chart.dLbls.numFmt = "0.00%"
+            chart.dLbls.dLblPos = "t"
+            chart.dLbls.showLegendKey = False
+            chart.dLbls.showCatName = False
+            chart.dLbls.showSerName = False
 
             # Protected View'de grafik boş kalmasın.
             _cache_line_chart(
