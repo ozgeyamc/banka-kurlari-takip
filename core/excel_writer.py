@@ -1218,10 +1218,10 @@ def _build_summary_sheet(
     # yaklaştırmıyoruz. Böylece grafikler daha büyük ve daha
     # okunaklı görünür.
     chart_columns = [
-        ("A", "E"),
-        ("E", "I"),
-        ("I", "M"),
-    ]
+    ("A", "H"),
+    ("H", "O"),
+    ("O", "V"),
+]
 
     # Dikey boşluğu da artırıyoruz ki veri etiketleri ve başlıklar
     # birbirine girmesin. Aynı zamanda özet tablolar grafiklerin
@@ -1335,7 +1335,7 @@ def _build_summary_sheet(
             chart.y_axis.title = "Makas %"
             chart.x_axis.title = None
             chart.height = 8.5
-            chart.width = 18.00
+            chart.width = 21.0
 
             # Banka bazlı pastel arka plan rengi.
             bank_chart_color = BANK_CHART_COLORS.get(
