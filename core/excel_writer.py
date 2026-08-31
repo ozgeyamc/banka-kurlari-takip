@@ -1125,8 +1125,8 @@ def _build_summary_sheet(
     # makas değişimi görünür ve grafikler birbirine karışmaz.
     # -------------------------------------------------
     target_banks = [
-        "Akbank",
         "Garanti BBVA",
+        "Akbank",
         "Yapıkredi",
         "Ziraat Bankası",
         "İş Bankası",
