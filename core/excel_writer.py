@@ -413,6 +413,10 @@ def _build_current_sheet(
     _style_header(ws, 1, 1, len(headers))
 
     provider_map = _provider_map(latest_rows)
+    # OZET sayfasında üst kısım yalnızca grafikler içindir.
+    # Çekim özeti ve en düşük makas tabloları grafiklerin altına,
+    # 105. satırdan itibaren yerleştirilir.
+
     run_dt = _parse_dt(latest_run_at)
 
     for excel_row, provider in enumerate(
@@ -912,12 +916,12 @@ def _build_summary_sheet(
     )
 
     labels = [
-        ("A3", "Son Çekim Tarihi"),
-        ("A4", "Son Çekim Saati"),
-        ("A5", "Toplam Sağlayıcı"),
-        ("A6", "Son Çekim Toplam Kayıt"),
-        ("A7", "HATA"),
-        ("A8", "KONTROL GEREKLİ"),
+        ("A105", "Son Çekim Tarihi"),
+        ("A106", "Son Çekim Saati"),
+        ("A107", "Toplam Sağlayıcı"),
+        ("A108", "Son Çekim Toplam Kayıt"),
+        ("A109", "HATA"),
+        ("A110", "KONTROL GEREKLİ"),
     ]
 
     for coord, label in labels:
@@ -929,25 +933,25 @@ def _build_summary_sheet(
         )
         ws[coord].border = THIN_BORDER
 
-    ws["B3"] = (
+    ws["B105"] = (
         run_dt.date()
         if run_dt
         else ""
     )
-    ws["B4"] = (
+    ws["B106"] = (
         run_dt.time().replace(tzinfo=None)
         if run_dt
         else ""
     )
-    ws["B5"] = len(providers)
-    ws["B6"] = len(latest_rows)
-    ws["B7"] = error_count
-    ws["B8"] = control_count
+    ws["B107"] = len(providers)
+    ws["B108"] = len(latest_rows)
+    ws["B109"] = error_count
+    ws["B110"] = control_count
 
-    ws["B3"].number_format = "dd.mm.yyyy"
-    ws["B4"].number_format = "hh:mm:ss"
+    ws["B105"].number_format = "dd.mm.yyyy"
+    ws["B106"].number_format = "hh:mm:ss"
 
-    for row in range(3, 9):
+    for row in range(105, 111):
         ws[f"B{row}"].border = THIN_BORDER
         ws[f"B{row}"].alignment = Alignment(
             horizontal="center"
@@ -967,14 +971,14 @@ def _build_summary_sheet(
         1,
     ):
         ws.cell(
-            row=11,
+            row=113,
             column=col,
             value=header,
         )
 
     _style_header(
         ws,
-        11,
+        113,
         1,
         len(headers),
     )
@@ -985,7 +989,7 @@ def _build_summary_sheet(
         "XAU": "GRAM ALTIN",
     }
 
-    row_no = 12
+    row_no = 114
 
     for code in ("USD", "EUR", "XAU"):
         product_rows = [
@@ -1212,12 +1216,14 @@ def _build_summary_sheet(
 
     # Tüm banka satırları arasında eşit dikey boşluk:
     # grafik başlangıçları her seferinde tam 20 satır ilerler.
+    # Üstte tablo yok; grafikler başlığın hemen altında başlar.
+    # Her banka satırı arasında eşit 20 satır vardır.
     chart_row_starts = [
-        18,
-        38,
-        58,
-        78,
-        98,
+        3,
+        23,
+        43,
+        63,
+        83,
     ]
 
     for bank_index, bank in enumerate(
