@@ -1289,9 +1289,10 @@ def _build_summary_sheet(
             trend_runs,
             start=helper_start_row + 1,
         ):
-            # X ekseninde tarih ve saat iki satır gösterilir.
-            # Hafta sonundaki sıçramaların nedeni daha kolay görülsün diye
-            # Cumartesi/Pazar noktaları ayrıca Cmt/Paz olarak işaretlenir.
+            # X ekseninde tarih + saat tek satır tutulur.
+            # İki satırlı metin Excel tarafından chart alanında kırpılabildiği
+            # için tek satır + 45 derece eğimli etiket daha güvenilir.
+            # Hafta sonu sıçramaları Cmt/Paz ile ayrıca görünür.
             run_dt = run["dt"]
             weekday_suffix = (
                 " Cmt" if run_dt.weekday() == 5
@@ -1301,7 +1302,7 @@ def _build_summary_sheet(
             label = (
                 run_dt.strftime("%d.%m")
                 + weekday_suffix
-                + "\n"
+                + " "
                 + run_dt.strftime("%H:%M")
             )
             category_values.append(label)
@@ -1356,13 +1357,26 @@ def _build_summary_sheet(
             chart.height = 8.5
             chart.width = 21.0
 
-            # Kategori etiketlerini kesin olarak X ekseninin altında göster.
-            # 29 veri noktası olduğu için hiçbir tarihi atlamıyoruz.
+            # Kategori eksenini MUTLAKA grafiğin altına koy.
+            # Önceki sürümde XML'de axPos="l" oluşabildiği için tarih/saat
+            # cache'e yazılsa bile Excel'de görünmüyordu.
             try:
+                chart.x_axis.axPos = "b"
+                chart.x_axis.delete = False
                 chart.x_axis.tickLblPos = "low"
                 chart.x_axis.tickLblSkip = 1
                 chart.x_axis.tickMarkSkip = 1
                 chart.x_axis.majorTickMark = "none"
+                chart.x_axis.minorTickMark = "none"
+            except Exception:
+                pass
+
+            # Kalabalık yatay ızgara çizgilerini kaldır.
+            # Yüzde ölçeği solda kalır; veri çizgisi ve etiketler daha net görünür.
+            try:
+                chart.y_axis.majorGridlines = None
+                chart.y_axis.majorTickMark = "none"
+                chart.y_axis.minorTickMark = "none"
             except Exception:
                 pass
 
@@ -1451,7 +1465,8 @@ def _build_summary_sheet(
             # - Y ekseni: 8 pt
             # - Nokta üzerindeki yüzde değerleri: 7 pt
             x_axis_text = RichText(
-                bodyPr=RichTextProperties(),
+                # -45°: tüm tarih/saat etiketleri geniş grafikte daha rahat sığar.
+                bodyPr=RichTextProperties(rot=-2700000),
                 p=[
                     Paragraph(
                         pPr=ParagraphProperties(
