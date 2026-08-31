@@ -15,6 +15,7 @@ from openpyxl.chart.data_source import (
     StrRef,
     StrVal,
 )
+from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -84,6 +85,16 @@ PROVIDER_COLORS = {
 }
 
 DEFAULT_PROVIDER_COLOR = 'E8EDF3'
+
+BANK_CHART_COLORS = {
+    'Akbank': 'FDE2E2',
+    'Garanti BBVA': 'E2F0D9',
+    'Yapıkredi': 'EDE4F7',
+    'Ziraat Bankası': 'FFF2CC',
+    'İş Bankası': 'DDEBF7',
+}
+
+DEFAULT_BANK_CHART_COLOR = 'E8EDF3'
 
 PRODUCT_ORDER = {
     "USD": 0,
@@ -916,12 +927,12 @@ def _build_summary_sheet(
     )
 
     labels = [
-        ("A105", "Son Çekim Tarihi"),
-        ("A106", "Son Çekim Saati"),
-        ("A107", "Toplam Sağlayıcı"),
-        ("A108", "Son Çekim Toplam Kayıt"),
-        ("A109", "HATA"),
-        ("A110", "KONTROL GEREKLİ"),
+        ("A121", "Son Çekim Tarihi"),
+        ("A122", "Son Çekim Saati"),
+        ("A123", "Toplam Sağlayıcı"),
+        ("A124", "Son Çekim Toplam Kayıt"),
+        ("A125", "HATA"),
+        ("A126", "KONTROL GEREKLİ"),
     ]
 
     for coord, label in labels:
@@ -933,25 +944,25 @@ def _build_summary_sheet(
         )
         ws[coord].border = THIN_BORDER
 
-    ws["B105"] = (
+    ws["B121"] = (
         run_dt.date()
         if run_dt
         else ""
     )
-    ws["B106"] = (
+    ws["B122"] = (
         run_dt.time().replace(tzinfo=None)
         if run_dt
         else ""
     )
-    ws["B107"] = len(providers)
-    ws["B108"] = len(latest_rows)
-    ws["B109"] = error_count
-    ws["B110"] = control_count
+    ws["B123"] = len(providers)
+    ws["B124"] = len(latest_rows)
+    ws["B125"] = error_count
+    ws["B126"] = control_count
 
-    ws["B105"].number_format = "dd.mm.yyyy"
-    ws["B106"].number_format = "hh:mm:ss"
+    ws["B121"].number_format = "dd.mm.yyyy"
+    ws["B122"].number_format = "hh:mm:ss"
 
-    for row in range(105, 111):
+    for row in range(121, 127):
         ws[f"B{row}"].border = THIN_BORDER
         ws[f"B{row}"].alignment = Alignment(
             horizontal="center"
@@ -971,14 +982,14 @@ def _build_summary_sheet(
         1,
     ):
         ws.cell(
-            row=113,
+            row=129,
             column=col,
             value=header,
         )
 
     _style_header(
         ws,
-        113,
+        129,
         1,
         len(headers),
     )
@@ -989,7 +1000,7 @@ def _build_summary_sheet(
         "XAU": "GRAM ALTIN",
     }
 
-    row_no = 114
+    row_no = 130
 
     for code in ("USD", "EUR", "XAU"):
         product_rows = [
@@ -1202,30 +1213,25 @@ def _build_summary_sheet(
 
     # Grafik konumları:
     # Her banka bir satır, üç ürün yan yana.
-    #
-    # A-F sütunları özet tabloları nedeniyle geniş olduğu için
-    # A / H / O başlangıçları grafikler arasında fazla boşluk
-    # oluşturuyordu. Grafik genişliği sabit (10 cm) olduğundan
-    # başlangıçları A / D / G olarak sıklaştırıyoruz.
-    #
-    # Böylece üç grafik birbirine yakın ve yaklaşık eşit
-    # yatay aralıkla görünür.
+    # Grafikler büyütüldüğü için yatay boşluğu kontrollü
+    # tutuyor, ama sütun başlangıçlarını da birbirine çok
+    # yaklaştırmıyoruz. Böylece grafikler daha büyük ve daha
+    # okunaklı görünür.
     chart_columns = [
-        ("A", "D"),
-        ("D", "G"),
-        ("G", "J"),
+        ("A", "E"),
+        ("E", "I"),
+        ("I", "M"),
     ]
 
-    # Tüm banka satırları arasında eşit dikey boşluk:
-    # grafik başlangıçları her seferinde tam 20 satır ilerler.
-    # Üstte tablo yok; grafikler başlığın hemen altında başlar.
-    # Her banka satırı arasında eşit 20 satır vardır.
+    # Dikey boşluğu da artırıyoruz ki veri etiketleri ve başlıklar
+    # birbirine girmesin. Aynı zamanda özet tablolar grafiklerin
+    # altına taşındığı için son banka grafiği rahatça sığar.
     chart_row_starts = [
         3,
-        23,
-        43,
-        63,
-        83,
+        26,
+        49,
+        72,
+        95,
     ]
 
     for bank_index, bank in enumerate(
@@ -1328,8 +1334,29 @@ def _build_summary_sheet(
             )
             chart.y_axis.title = "Makas %"
             chart.x_axis.title = None
-            chart.height = 7.0
-            chart.width = 10.0
+            chart.height = 8.5
+            chart.width = 11.5
+
+            # Banka bazlı pastel arka plan rengi.
+            bank_chart_color = BANK_CHART_COLORS.get(
+                bank,
+                DEFAULT_BANK_CHART_COLOR,
+            )
+            try:
+                chart.graphical_properties = GraphicalProperties(
+                    noFill=False,
+                    solidFill=bank_chart_color,
+                )
+            except Exception:
+                pass
+
+            try:
+                chart.plot_area.graphicalProperties = GraphicalProperties(
+                    noFill=False,
+                    solidFill=bank_chart_color,
+                )
+            except Exception:
+                pass
 
             # Tek seri olduğu için legend gereksiz.
             chart.legend = None
@@ -1368,8 +1395,8 @@ def _build_summary_sheet(
             try:
                 series = chart.series[0]
                 series.marker.symbol = marker_symbol
-                series.marker.size = 7
-                series.graphicalProperties.line.width = 22000
+                series.marker.size = 6
+                series.graphicalProperties.line.width = 20000
             except Exception:
                 pass
 
@@ -1385,6 +1412,15 @@ def _build_summary_sheet(
             chart.dLbls.showLegendKey = False
             chart.dLbls.showCatName = False
             chart.dLbls.showSerName = False
+            try:
+                chart.dLbls.showLeaderLines = False
+            except Exception:
+                pass
+
+            try:
+                chart.x_axis.txPr = None
+            except Exception:
+                pass
 
             # Protected View'de grafik boş kalmasın.
             _cache_line_chart(
@@ -1446,9 +1482,16 @@ def _build_summary_sheet(
             "A": 22,
             "B": 18,
             "C": 18,
-            "D": 24,
-            "E": 16,
+            "D": 18,
+            "E": 20,
             "F": 16,
+            "G": 18,
+            "H": 16,
+            "I": 20,
+            "J": 16,
+            "K": 16,
+            "L": 16,
+            "M": 16,
         },
     )
 
