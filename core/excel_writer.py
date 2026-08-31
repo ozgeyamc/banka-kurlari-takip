@@ -1289,8 +1289,20 @@ def _build_summary_sheet(
             trend_runs,
             start=helper_start_row + 1,
         ):
-            label = run["dt"].strftime(
-                "%d.%m %H:%M"
+            # X ekseninde tarih ve saat iki satır gösterilir.
+            # Hafta sonundaki sıçramaların nedeni daha kolay görülsün diye
+            # Cumartesi/Pazar noktaları ayrıca Cmt/Paz olarak işaretlenir.
+            run_dt = run["dt"]
+            weekday_suffix = (
+                " Cmt" if run_dt.weekday() == 5
+                else " Paz" if run_dt.weekday() == 6
+                else ""
+            )
+            label = (
+                run_dt.strftime("%d.%m")
+                + weekday_suffix
+                + "\n"
+                + run_dt.strftime("%H:%M")
             )
             category_values.append(label)
 
@@ -1343,6 +1355,16 @@ def _build_summary_sheet(
             chart.x_axis.title = None
             chart.height = 8.5
             chart.width = 21.0
+
+            # Kategori etiketlerini kesin olarak X ekseninin altında göster.
+            # 29 veri noktası olduğu için hiçbir tarihi atlamıyoruz.
+            try:
+                chart.x_axis.tickLblPos = "low"
+                chart.x_axis.tickLblSkip = 1
+                chart.x_axis.tickMarkSkip = 1
+                chart.x_axis.majorTickMark = "none"
+            except Exception:
+                pass
 
             # Banka bazlı pastel arka plan rengi.
             bank_chart_color = BANK_CHART_COLORS.get(
@@ -1424,8 +1446,22 @@ def _build_summary_sheet(
             except Exception:
                 pass
 
-            # Grafik yazılarını küçült: veri etiketleri ve eksenler 8 pt.
-            small_text = RichText(
+            # Yazı boyutları:
+            # - X ekseni tarih/saat: 6.5 pt (29 nokta rahat sığsın)
+            # - Y ekseni: 8 pt
+            # - Nokta üzerindeki yüzde değerleri: 7 pt
+            x_axis_text = RichText(
+                bodyPr=RichTextProperties(),
+                p=[
+                    Paragraph(
+                        pPr=ParagraphProperties(
+                            defRPr=CharacterProperties(sz=650)
+                        ),
+                        endParaRPr=CharacterProperties(sz=650),
+                    )
+                ],
+            )
+            y_axis_text = RichText(
                 bodyPr=RichTextProperties(),
                 p=[
                     Paragraph(
@@ -1436,11 +1472,22 @@ def _build_summary_sheet(
                     )
                 ],
             )
+            data_label_text = RichText(
+                bodyPr=RichTextProperties(),
+                p=[
+                    Paragraph(
+                        pPr=ParagraphProperties(
+                            defRPr=CharacterProperties(sz=700)
+                        ),
+                        endParaRPr=CharacterProperties(sz=700),
+                    )
+                ],
+            )
 
             try:
-                chart.x_axis.txPr = small_text
-                chart.y_axis.txPr = small_text
-                chart.dLbls.txPr = small_text
+                chart.x_axis.txPr = x_axis_text
+                chart.y_axis.txPr = y_axis_text
+                chart.dLbls.txPr = data_label_text
             except Exception:
                 pass
 
