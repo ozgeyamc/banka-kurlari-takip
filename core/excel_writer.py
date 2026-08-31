@@ -7,7 +7,7 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
-from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.label import DataLabel, DataLabelList
 from openpyxl.chart.data_source import (
     NumData,
     NumVal,
@@ -1228,10 +1228,10 @@ def _build_summary_sheet(
     # altına taşındığı için son banka grafiği rahatça sığar.
     chart_row_starts = [
         3,
-        26,
-        49,
-        72,
-        95,
+        25,
+        47,
+        69,
+        91,
     ]
 
     for bank_index, bank in enumerate(
@@ -1334,8 +1334,8 @@ def _build_summary_sheet(
             )
             chart.y_axis.title = "Makas %"
             chart.x_axis.title = None
-            chart.height = 8.5
-            chart.width = 11.5
+            chart.height = 8.2
+            chart.width = 11.2
 
             # Banka bazlı pastel arka plan rengi.
             bank_chart_color = BANK_CHART_COLORS.get(
@@ -1405,22 +1405,64 @@ def _build_summary_sheet(
             #
             # Tek seri olduğu için etiketler hangi ürüne ait olduğu
             # konusunda karışıklık yaratmaz.
-            chart.dLbls = DataLabelList()
-            chart.dLbls.showVal = True
-            chart.dLbls.numFmt = "0.00%"
-            chart.dLbls.dLblPos = "t"
-            chart.dLbls.showLegendKey = False
-            chart.dLbls.showCatName = False
-            chart.dLbls.showSerName = False
-            try:
-                chart.dLbls.showLeaderLines = False
-            except Exception:
-                pass
+            # Veri etiketi kalabalığını azalt:
+            # - ilk değer
+            # - son değer
+            # - en yüksek değer
+            # - değer değişiminin başladığı/bittiği noktalar
+            # gösterilir. Aynı değerin her noktada tekrar tekrar
+            # yazılması engellendiği için etiketler üst üste binmez.
+            values_for_labels = cached_values[code]
+            label_indexes = set()
 
-            try:
-                chart.x_axis.txPr = None
-            except Exception:
-                pass
+            valid_indexes = [
+                idx
+                for idx, value in enumerate(values_for_labels)
+                if value is not None
+            ]
+
+            if valid_indexes:
+                label_indexes.add(valid_indexes[0])
+                label_indexes.add(valid_indexes[-1])
+
+                max_index = max(
+                    valid_indexes,
+                    key=lambda idx: values_for_labels[idx],
+                )
+                label_indexes.add(max_index)
+
+                for idx in valid_indexes:
+                    if idx == 0:
+                        continue
+                    previous = values_for_labels[idx - 1]
+                    current = values_for_labels[idx]
+                    if (
+                        previous is not None
+                        and current is not None
+                        and abs(current - previous) > 1e-12
+                    ):
+                        label_indexes.add(idx - 1)
+                        label_indexes.add(idx)
+
+            chart.dLbls = DataLabelList(
+                showVal=False,
+                showLegendKey=False,
+                showCatName=False,
+                showSerName=False,
+                showLeaderLines=False,
+                dLbl=[
+                    DataLabel(
+                        idx=idx,
+                        showVal=True,
+                        numFmt="0.00%",
+                        dLblPos="t",
+                        showLegendKey=False,
+                        showCatName=False,
+                        showSerName=False,
+                    )
+                    for idx in sorted(label_indexes)
+                ],
+            )
 
             # Protected View'de grafik boş kalmasın.
             _cache_line_chart(
@@ -1455,13 +1497,21 @@ def _build_summary_sheet(
                     0.00005,
                 )
 
-                chart.y_axis.scaling.min = max(
+                axis_min = max(
                     0,
                     minimum - padding,
                 )
-                chart.y_axis.scaling.max = (
-                    maximum + padding
-                )
+                axis_max = maximum + padding
+
+                chart.y_axis.scaling.min = axis_min
+                chart.y_axis.scaling.max = axis_max
+
+                # Her grafikte yaklaşık aynı sayıda yatay kılavuz çizgisi
+                # olsun. Böylece aynı banka satırındaki üç grafik görsel
+                # olarak aynı hizada ve daha muntazam görünür.
+                axis_span = axis_max - axis_min
+                if axis_span > 0:
+                    chart.y_axis.majorUnit = axis_span / 4.0
 
             start_col, end_col = (
                 chart_columns[product_index]
@@ -1479,19 +1529,19 @@ def _build_summary_sheet(
     _set_widths(
         ws,
         {
-            "A": 22,
+            "A": 18,
             "B": 18,
             "C": 18,
             "D": 18,
-            "E": 20,
-            "F": 16,
+            "E": 18,
+            "F": 18,
             "G": 18,
-            "H": 16,
-            "I": 20,
-            "J": 16,
-            "K": 16,
-            "L": 16,
-            "M": 16,
+            "H": 18,
+            "I": 18,
+            "J": 18,
+            "K": 18,
+            "L": 18,
+            "M": 18,
         },
     )
 
