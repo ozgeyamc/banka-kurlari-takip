@@ -16,6 +16,13 @@ from openpyxl.chart.data_source import (
     StrVal,
 )
 from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.text import (
+    CharacterProperties,
+    Paragraph,
+    ParagraphProperties,
+    RichTextProperties,
+)
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -1218,10 +1225,10 @@ def _build_summary_sheet(
     # yaklaştırmıyoruz. Böylece grafikler daha büyük ve daha
     # okunaklı görünür.
     chart_columns = [
-    ("A", "H"),
-    ("H", "O"),
-    ("O", "V"),
-]
+        ("A", "J"),
+        ("J", "T"),
+        ("T", "AD"),
+    ]
 
     # Dikey boşluğu da artırıyoruz ki veri etiketleri ve başlıklar
     # birbirine girmesin. Aynı zamanda özet tablolar grafiklerin
@@ -1417,8 +1424,35 @@ def _build_summary_sheet(
             except Exception:
                 pass
 
+            # Grafik yazılarını küçült: veri etiketleri ve eksenler 8 pt.
+            small_text = RichText(
+                bodyPr=RichTextProperties(),
+                p=[
+                    Paragraph(
+                        pPr=ParagraphProperties(
+                            defRPr=CharacterProperties(sz=800)
+                        ),
+                        endParaRPr=CharacterProperties(sz=800),
+                    )
+                ],
+            )
+
             try:
-                chart.x_axis.txPr = None
+                chart.x_axis.txPr = small_text
+                chart.y_axis.txPr = small_text
+                chart.dLbls.txPr = small_text
+            except Exception:
+                pass
+
+            # Başlığı da biraz küçült (10 pt).
+            try:
+                title_paragraph = chart.title.tx.rich.p[0]
+                title_paragraph.pPr = ParagraphProperties(
+                    defRPr=CharacterProperties(sz=1000)
+                )
+                title_paragraph.endParaRPr = CharacterProperties(sz=1000)
+                for run in title_paragraph.r:
+                    run.rPr = CharacterProperties(sz=1000, b=True)
             except Exception:
                 pass
 
