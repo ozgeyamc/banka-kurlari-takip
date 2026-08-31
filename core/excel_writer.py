@@ -1335,7 +1335,7 @@ def _build_summary_sheet(
             chart.y_axis.title = "Makas %"
             chart.x_axis.title = None
             chart.height = 8.5
-            chart.width = 11.5
+            chart.width = 18.00
 
             # Banka bazlı pastel arka plan rengi.
             bank_chart_color = BANK_CHART_COLORS.get(
