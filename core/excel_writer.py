@@ -1526,6 +1526,19 @@ def _build_summary_sheet(
             "K": 16,
             "L": 16,
             "M": 16,
+
+            # Grafikler arası yatay mesafeyi eşitle.
+            # A -> J arasındaki A:I sütunlarının toplam genişliği 166.
+            # J -> T arasındaki J:S sütunlarının toplamını da 166 yapıyoruz:
+            # J:M = 64, N:S = 6 x 17 = 102, toplam = 166.
+            # Böylece A, J ve T başlangıçlı 21 cm genişliğindeki grafiklerin
+            # arasındaki boşluk fiziksel olarak aynı görünür.
+            "N": 17,
+            "O": 17,
+            "P": 17,
+            "Q": 17,
+            "R": 17,
+            "S": 17,
         },
     )
 
