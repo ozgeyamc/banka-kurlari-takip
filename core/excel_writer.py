@@ -1203,15 +1203,17 @@ def _build_summary_sheet(
     # Grafik konumları:
     # Her banka bir satır, üç ürün yan yana.
     #
-    # A:G   -> DOLAR
-    # H:N   -> EURO
-    # O:U   -> GRAM ALTIN
+    # A-F sütunları özet tabloları nedeniyle geniş olduğu için
+    # A / H / O başlangıçları grafikler arasında fazla boşluk
+    # oluşturuyordu. Grafik genişliği sabit (10 cm) olduğundan
+    # başlangıçları A / D / G olarak sıklaştırıyoruz.
     #
-    # Her banka satırı 17 Excel satırı yüksekliğinde.
+    # Böylece üç grafik birbirine yakın ve yaklaşık eşit
+    # yatay aralıkla görünür.
     chart_columns = [
-        ("A", "G"),
-        ("H", "N"),
-        ("O", "U"),
+        ("A", "D"),
+        ("D", "G"),
+        ("G", "J"),
     ]
 
     # Tüm banka satırları arasında eşit dikey boşluk:
