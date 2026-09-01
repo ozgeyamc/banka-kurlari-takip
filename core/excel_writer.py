@@ -1563,7 +1563,7 @@ def _build_summary_sheet(
         chart.title = title
 
         # Biraz daha geniş.
-        chart.height = 8.0
+        chart.height = 9.0
         chart.width = 19.0
 
         chart.y_axis.title = (
