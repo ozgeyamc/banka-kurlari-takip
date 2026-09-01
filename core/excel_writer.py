@@ -46,16 +46,15 @@ THIN_BORDER = Border(
 OK_FILL = PatternFill("solid", fgColor="E2F0D9")
 CONTROL_FILL = PatternFill("solid", fgColor="FFF2CC")
 ERROR_FILL = PatternFill("solid", fgColor="FCE4D6")
+
 BEST_FILL = PatternFill("solid", fgColor="E2F0D9")
 BEST_FONT = Font(color="006100", bold=True)
 
+WEEKEND_FILL = PatternFill("solid", fgColor="FFF2CC")
+
 
 # ============================================================
-# ÜRÜN TABLO RENKLERİ
-#
-# DOLAR = açık mavi
-# EURO = açık turuncu
-# ALTIN = açık sarı
+# ÜRÜN RENKLERİ
 # ============================================================
 
 USD_FILL = PatternFill(
@@ -88,6 +87,10 @@ XAU_HEADER_FILL = PatternFill(
     fgColor="BF9000",
 )
 
+
+# ============================================================
+# DURUMLAR
+# ============================================================
 
 STATUS_LABELS = {
     "OK": "DOĞRU",
@@ -160,7 +163,7 @@ DEFAULT_BANK_CHART_COLOR = "E8EDF3"
 
 
 # ============================================================
-# ÜRÜN GRAFİK RENKLERİ
+# GRAFİK ÇİZGİ RENKLERİ
 # ============================================================
 
 PRODUCT_LINE_COLORS = {
@@ -168,6 +171,20 @@ PRODUCT_LINE_COLORS = {
     "EUR": "ED7D31",
     "XAU": "FFC000",
 }
+
+
+COMPARISON_BANK_COLORS = {
+    "Garanti BBVA": "70AD47",
+    "Akbank": "C00000",
+    "Yapıkredi": "7030A0",
+    "Ziraat Bankası": "FFC000",
+    "İş Bankası": "4472C4",
+}
+
+
+# ============================================================
+# ÜRÜNLER
+# ============================================================
 
 PRODUCT_ORDER = {
     "USD": 0,
@@ -183,7 +200,7 @@ PRODUCT_NAMES = {
 
 
 # ============================================================
-# 5 HEDEF BANKA
+# HEDEF 5 BANKA
 # ============================================================
 
 TARGET_BANKS = [
@@ -195,15 +212,6 @@ TARGET_BANKS = [
 ]
 
 
-COMPARISON_BANK_COLORS = {
-    "Garanti BBVA": "70AD47",
-    "Akbank": "C00000",
-    "Yapıkredi": "7030A0",
-    "Ziraat Bankası": "FFC000",
-    "İş Bankası": "4472C4",
-}
-
-
 # ============================================================
 # YARDIMCI FONKSİYONLAR
 # ============================================================
@@ -213,11 +221,18 @@ def _provider_fill(provider: str | None):
         (provider or "").strip(),
         DEFAULT_PROVIDER_COLOR,
     )
-    return PatternFill("solid", fgColor=color)
+
+    return PatternFill(
+        "solid",
+        fgColor=color,
+    )
 
 
 def _product_fill(code: str | None):
-    code = (code or "").strip().upper()
+
+    code = (
+        code or ""
+    ).strip().upper()
 
     if code == "USD":
         return USD_FILL
@@ -228,30 +243,48 @@ def _product_fill(code: str | None):
     if code == "XAU":
         return XAU_FILL
 
-    return PatternFill(fill_type=None)
+    return PatternFill(
+        fill_type=None
+    )
 
 
-def _parse_dt(value: str | None) -> datetime | None:
+def _parse_dt(
+    value: str | None,
+) -> datetime | None:
+
     if not value:
         return None
 
     try:
-        return datetime.fromisoformat(value)
+        return datetime.fromisoformat(
+            value
+        )
     except ValueError:
         return None
 
 
 def _to_float(value):
-    if value in (None, ""):
+
+    if value in (
+        None,
+        "",
+    ):
         return None
 
     try:
         return float(value)
-    except (TypeError, ValueError):
+
+    except (
+        TypeError,
+        ValueError,
+    ):
         return None
 
 
-def read_history(path: str | Path) -> list[dict]:
+def read_history(
+    path: str | Path,
+) -> list[dict]:
+
     path = Path(path)
 
     if not path.exists():
@@ -262,7 +295,12 @@ def read_history(path: str | Path) -> list[dict]:
         encoding="utf-8-sig",
         newline="",
     ) as handle:
-        return list(csv.DictReader(handle))
+
+        return list(
+            csv.DictReader(
+                handle
+            )
+        )
 
 
 def _style_header(
@@ -272,16 +310,25 @@ def _style_header(
     end_col: int,
 ) -> None:
 
-    for col in range(start_col, end_col + 1):
-        cell = ws.cell(row=row, column=col)
+    for col in range(
+        start_col,
+        end_col + 1,
+    ):
+
+        cell = ws.cell(
+            row=row,
+            column=col,
+        )
 
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
+
         cell.alignment = Alignment(
             horizontal="center",
             vertical="center",
             wrap_text=True,
         )
+
         cell.border = THIN_BORDER
 
 
@@ -296,7 +343,9 @@ def _apply_table(
     if end_row <= start_row:
         return
 
-    from openpyxl.utils import get_column_letter
+    from openpyxl.utils import (
+        get_column_letter,
+    )
 
     ref = (
         f"A{start_row}:"
@@ -309,15 +358,19 @@ def _apply_table(
         ref=ref,
     )
 
-    table.tableStyleInfo = TableStyleInfo(
-        name="TableStyleMedium2",
-        showFirstColumn=False,
-        showLastColumn=False,
-        showRowStripes=False,
-        showColumnStripes=False,
+    table.tableStyleInfo = (
+        TableStyleInfo(
+            name="TableStyleMedium2",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=False,
+            showColumnStripes=False,
+        )
     )
 
-    ws.add_table(table)
+    ws.add_table(
+        table
+    )
 
 
 def _set_widths(
@@ -325,11 +378,19 @@ def _set_widths(
     widths: dict[str, float],
 ) -> None:
 
-    for column, width in widths.items():
-        ws.column_dimensions[column].width = width
+    for column, width in (
+        widths.items()
+    ):
+
+        ws.column_dimensions[
+            column
+        ].width = width
 
 
-def _status_fill(status: str):
+def _status_fill(
+    status: str,
+):
+
     if status == "ERROR":
         return ERROR_FILL
 
@@ -343,7 +404,9 @@ def _display_status(
     status: str | None,
 ) -> str:
 
-    raw = (status or "").strip()
+    raw = (
+        status or ""
+    ).strip()
 
     return STATUS_LABELS.get(
         raw,
@@ -352,7 +415,36 @@ def _display_status(
 
 
 # ============================================================
-# AYNI GÜNDE İLK ÇALIŞTIRMA KALSIN
+# HAFTA SONU ETİKETİ
+# ============================================================
+
+def _chart_date_label(
+    dt: datetime,
+) -> str:
+
+    label = dt.strftime(
+        "%d.%m.%Y"
+    )
+
+    # Pazartesi = 0
+    # Cumartesi = 5
+    # Pazar = 6
+
+    if dt.weekday() == 5:
+        return (
+            f"{label} CMT"
+        )
+
+    if dt.weekday() == 6:
+        return (
+            f"{label} PAZ"
+        )
+
+    return label
+
+
+# ============================================================
+# AYNI GÜN İLK ÇALIŞTIRMA
 # ============================================================
 
 def _daily_history(
@@ -364,22 +456,29 @@ def _daily_history(
     for row in history:
 
         run_dt = _parse_dt(
-            row.get("run_at")
+            row.get(
+                "run_at"
+            )
         )
 
         if not run_dt:
             continue
 
-        date_key = run_dt.date()
+        date_key = (
+            run_dt.date()
+        )
 
-        current = first_run_by_date.get(
-            date_key
+        current = (
+            first_run_by_date.get(
+                date_key
+            )
         )
 
         if (
             current is None
             or run_dt < current
         ):
+
             first_run_by_date[
                 date_key
             ] = run_dt
@@ -393,23 +492,38 @@ def _daily_history(
     for row in history:
 
         run_dt = _parse_dt(
-            row.get("run_at")
+            row.get(
+                "run_at"
+            )
         )
 
-        if run_dt in selected_datetimes:
-            result.append(row)
+        if (
+            run_dt
+            in selected_datetimes
+        ):
+
+            result.append(
+                row
+            )
 
     return result
 
 
 def _latest_run_rows(
     history: list[dict],
-) -> tuple[str | None, list[dict]]:
+) -> tuple[
+    str | None,
+    list[dict],
+]:
 
     valid = [
         row
         for row in history
-        if _parse_dt(row.get("run_at"))
+        if _parse_dt(
+            row.get(
+                "run_at"
+            )
+        )
     ]
 
     if not valid:
@@ -418,18 +532,24 @@ def _latest_run_rows(
     latest = max(
         valid,
         key=lambda row: _parse_dt(
-            row.get("run_at")
+            row.get(
+                "run_at"
+            )
         ),
     )
 
-    latest_run_at = latest["run_at"]
+    latest_run_at = (
+        latest["run_at"]
+    )
 
     return (
         latest_run_at,
         [
             row
             for row in history
-            if row.get("run_at")
+            if row.get(
+                "run_at"
+            )
             == latest_run_at
         ],
     )
@@ -437,23 +557,32 @@ def _latest_run_rows(
 
 def _provider_map(
     rows: Iterable[dict],
-) -> dict[str, dict[str, dict]]:
+):
 
     result = {}
 
     for row in rows:
 
         provider = (
-            row.get("provider", "")
+            row.get(
+                "provider",
+                "",
+            )
             .strip()
         )
 
         code = (
-            row.get("code", "")
+            row.get(
+                "code",
+                "",
+            )
             .strip()
         )
 
-        if not provider or not code:
+        if (
+            not provider
+            or not code
+        ):
             continue
 
         result.setdefault(
@@ -464,28 +593,185 @@ def _provider_map(
     return result
 
 
-def _history_sort_key(row: dict):
+def _history_sort_key(
+    row: dict,
+):
 
     provider = (
-        row.get("provider")
+        row.get(
+            "provider"
+        )
         or ""
     ).strip().casefold()
 
     code = (
-        row.get("code")
+        row.get(
+            "code"
+        )
         or ""
     ).strip()
 
     run_dt = (
-        _parse_dt(row.get("run_at"))
+        _parse_dt(
+            row.get(
+                "run_at"
+            )
+        )
         or datetime.min
     )
 
     return (
         provider,
-        PRODUCT_ORDER.get(code, 99),
+        PRODUCT_ORDER.get(
+            code,
+            99,
+        ),
         run_dt,
     )
+
+
+# ============================================================
+# AYLIK ORTALAMA HESABI
+# ============================================================
+
+def _build_monthly_averages(
+    history: list[dict],
+):
+
+    buckets = {}
+
+    for row in history:
+
+        provider = (
+            row.get(
+                "provider"
+            )
+            or ""
+        ).strip()
+
+        code = (
+            row.get(
+                "code"
+            )
+            or ""
+        ).strip()
+
+        run_dt = _parse_dt(
+            row.get(
+                "run_at"
+            )
+        )
+
+        if (
+            provider
+            not in TARGET_BANKS
+        ):
+            continue
+
+        if code not in (
+            "USD",
+            "EUR",
+            "XAU",
+        ):
+            continue
+
+        if not run_dt:
+            continue
+
+        if (
+            row.get(
+                "status"
+            )
+            == "ERROR"
+        ):
+            continue
+
+        spread_pct = _to_float(
+            row.get(
+                "spread_pct"
+            )
+        )
+
+        if spread_pct is None:
+
+            buy = _to_float(
+                row.get(
+                    "buy"
+                )
+            )
+
+            sell = _to_float(
+                row.get(
+                    "sell"
+                )
+            )
+
+            if (
+                buy
+                not in (
+                    None,
+                    0,
+                )
+                and sell
+                is not None
+            ):
+
+                spread_pct = (
+                    (
+                        sell
+                        - buy
+                    )
+                    / buy
+                ) * 100.0
+
+        if spread_pct is None:
+            continue
+
+        month_key = (
+            run_dt.year,
+            run_dt.month,
+        )
+
+        key = (
+            month_key,
+            provider,
+            code,
+        )
+
+        buckets.setdefault(
+            key,
+            [],
+        ).append(
+            spread_pct / 100.0
+        )
+
+    result = {}
+
+    for (
+        month_key,
+        provider,
+        code,
+    ), values in (
+        buckets.items()
+    ):
+
+        if not values:
+            continue
+
+        average = (
+            sum(values)
+            / len(values)
+        )
+
+        result.setdefault(
+            month_key,
+            {},
+        ).setdefault(
+            provider,
+            {},
+        )[code] = average
+
+    return result
 
 
 # ============================================================
@@ -517,7 +803,8 @@ def _cache_line_chart(
         ]
 
         if (
-            series.val is not None
+            series.val
+            is not None
             and series.val.numRef
             is not None
         ):
@@ -525,7 +812,9 @@ def _cache_line_chart(
             series.val.numRef.numCache = (
                 NumData(
                     formatCode="0.000%",
-                    ptCount=len(values),
+                    ptCount=len(
+                        values
+                    ),
                     pt=numeric_points,
                 )
             )
@@ -534,35 +823,52 @@ def _cache_line_chart(
 
             category_formula = None
 
-            if series.cat.numRef is not None:
+            if (
+                series.cat.numRef
+                is not None
+            ):
+
                 category_formula = (
                     series.cat.numRef.f
                 )
 
-            elif series.cat.strRef is not None:
+            elif (
+                series.cat.strRef
+                is not None
+            ):
+
                 category_formula = (
                     series.cat.strRef.f
                 )
 
             series.cat.numRef = None
 
-            series.cat.strRef = StrRef(
-                f=category_formula,
-                strCache=StrData(
-                    ptCount=len(categories),
-                    pt=[
-                        StrVal(
-                            idx=index,
-                            v=str(value),
-                        )
-                        for index, value
-                        in enumerate(categories)
-                    ],
-                ),
+            series.cat.strRef = (
+                StrRef(
+                    f=category_formula,
+                    strCache=StrData(
+                        ptCount=len(
+                            categories
+                        ),
+                        pt=[
+                            StrVal(
+                                idx=index,
+                                v=str(
+                                    value
+                                ),
+                            )
+                            for index, value
+                            in enumerate(
+                                categories
+                            )
+                        ],
+                    ),
+                )
             )
 
         if (
-            series.tx is not None
+            series.tx
+            is not None
             and series.tx.strRef
             is not None
         ):
@@ -585,10 +891,10 @@ def _cache_line_chart(
 # ============================================================
 
 def _build_current_sheet(
-    wb: Workbook,
-    latest_run_at: str | None,
-    latest_rows: list[dict],
-) -> None:
+    wb,
+    latest_run_at,
+    latest_rows,
+):
 
     ws = wb.create_sheet(
         "GUNCEL_KURLAR"
@@ -618,7 +924,9 @@ def _build_current_sheet(
         "Gram Altın Makas %",
     ]
 
-    ws.append(headers)
+    ws.append(
+        headers
+    )
 
     _style_header(
         ws,
@@ -627,37 +935,56 @@ def _build_current_sheet(
         len(headers),
     )
 
-    # --------------------------------------------------------
-    # BAŞLIKLARI ÜRÜNE GÖRE RENKLENDİR
-    # --------------------------------------------------------
-
-    # DOLAR D:G
-    for col in range(4, 8):
-        ws.cell(1, col).fill = (
+    # DOLAR BAŞLIKLARI
+    for col in range(
+        4,
+        8,
+    ):
+        ws.cell(
+            1,
+            col,
+        ).fill = (
             USD_HEADER_FILL
         )
 
-    # EURO H:K
-    for col in range(8, 12):
-        ws.cell(1, col).fill = (
+    # EURO BAŞLIKLARI
+    for col in range(
+        8,
+        12,
+    ):
+        ws.cell(
+            1,
+            col,
+        ).fill = (
             EUR_HEADER_FILL
         )
 
-    # ALTIN L:O
-    for col in range(12, 16):
-        ws.cell(1, col).fill = (
+    # ALTIN BAŞLIKLARI
+    for col in range(
+        12,
+        16,
+    ):
+        ws.cell(
+            1,
+            col,
+        ).fill = (
             XAU_HEADER_FILL
         )
 
-    provider_map = _provider_map(
-        latest_rows
+    provider_map = (
+        _provider_map(
+            latest_rows
+        )
     )
 
     run_dt = _parse_dt(
         latest_run_at
     )
 
-    for excel_row, provider in enumerate(
+    for (
+        excel_row,
+        provider,
+    ) in enumerate(
         sorted(
             provider_map,
             key=str.casefold,
@@ -665,9 +992,11 @@ def _build_current_sheet(
         start=2,
     ):
 
-        row_map = provider_map[
-            provider
-        ]
+        row_map = (
+            provider_map[
+                provider
+            ]
+        )
 
         ws.cell(
             excel_row,
@@ -681,7 +1010,9 @@ def _build_current_sheet(
             excel_row,
             2,
             (
-                run_dt.time().replace(
+                run_dt
+                .time()
+                .replace(
                     tzinfo=None
                 )
                 if run_dt
@@ -696,7 +1027,9 @@ def _build_current_sheet(
         )
 
         provider_cell.fill = (
-            _provider_fill(provider)
+            _provider_fill(
+                provider
+            )
         )
 
         provider_cell.font = Font(
@@ -704,9 +1037,24 @@ def _build_current_sheet(
         )
 
         layout = {
-            "USD": (4, 5, 6, 7),
-            "EUR": (8, 9, 10, 11),
-            "XAU": (12, 13, 14, 15),
+            "USD": (
+                4,
+                5,
+                6,
+                7,
+            ),
+            "EUR": (
+                8,
+                9,
+                10,
+                11,
+            ),
+            "XAU": (
+                12,
+                13,
+                14,
+                15,
+            ),
         }
 
         for code, (
@@ -716,13 +1064,11 @@ def _build_current_sheet(
             pct_col,
         ) in layout.items():
 
-            item = row_map.get(code)
-
-            # ------------------------------------------------
-            # ÜRÜN GRUBUNUN TAMAMINI BOYA
-            # ------------------------------------------------
-
-            fill = _product_fill(code)
+            fill = (
+                _product_fill(
+                    code
+                )
+            )
 
             for col in (
                 buy_col,
@@ -730,31 +1076,45 @@ def _build_current_sheet(
                 spread_col,
                 pct_col,
             ):
+
                 ws.cell(
                     excel_row,
                     col,
                 ).fill = fill
 
+            item = row_map.get(
+                code
+            )
+
             if not item:
                 continue
 
             buy = _to_float(
-                item.get("buy")
+                item.get(
+                    "buy"
+                )
             )
 
             sell = _to_float(
-                item.get("sell")
+                item.get(
+                    "sell"
+                )
             )
 
             spread = _to_float(
-                item.get("spread")
+                item.get(
+                    "spread"
+                )
             )
 
             spread_pct = _to_float(
-                item.get("spread_pct")
+                item.get(
+                    "spread_pct"
+                )
             )
 
             if buy is not None:
+
                 ws.cell(
                     excel_row,
                     buy_col,
@@ -762,6 +1122,7 @@ def _build_current_sheet(
                 )
 
             if sell is not None:
+
                 ws.cell(
                     excel_row,
                     sell_col,
@@ -773,21 +1134,28 @@ def _build_current_sheet(
                 and buy is not None
                 and sell is not None
             ):
-                spread = sell - buy
+
+                spread = (
+                    sell - buy
+                )
 
             if (
                 spread_pct is None
-                and spread is not None
-                and buy not in (
+                and spread
+                is not None
+                and buy
+                not in (
                     None,
                     0,
                 )
             ):
+
                 spread_pct = (
                     spread / buy
                 ) * 100.0
 
             if spread is not None:
+
                 ws.cell(
                     excel_row,
                     spread_col,
@@ -795,27 +1163,40 @@ def _build_current_sheet(
                 )
 
             if spread_pct is not None:
+
                 ws.cell(
                     excel_row,
                     pct_col,
-                    spread_pct / 100.0,
+                    spread_pct
+                    / 100.0,
                 )
 
         ws.cell(
             excel_row,
             1,
-        ).number_format = "dd.mm.yyyy"
+        ).number_format = (
+            "dd.mm.yyyy"
+        )
 
         ws.cell(
             excel_row,
             2,
-        ).number_format = "hh:mm:ss"
+        ).number_format = (
+            "hh:mm:ss"
+        )
 
         for col in (
-            4, 5, 6,
-            8, 9, 10,
-            12, 13, 14,
+            4,
+            5,
+            6,
+            8,
+            9,
+            10,
+            12,
+            13,
+            14,
         ):
+
             ws.cell(
                 excel_row,
                 col,
@@ -828,6 +1209,7 @@ def _build_current_sheet(
             11,
             15,
         ):
+
             ws.cell(
                 excel_row,
                 col,
@@ -861,14 +1243,17 @@ def _build_current_sheet(
             )
 
             rule = FormulaRule(
-                formula=[formula],
+                formula=[
+                    formula
+                ],
                 fill=BEST_FILL,
                 font=BEST_FONT,
             )
 
             ws.conditional_formatting.add(
                 f"{col_letter}2:"
-                f"{col_letter}{ws.max_row}",
+                f"{col_letter}"
+                f"{ws.max_row}",
                 rule,
             )
 
@@ -899,9 +1284,9 @@ def _build_current_sheet(
 # ============================================================
 
 def _build_history_sheet(
-    wb: Workbook,
-    history: list[dict],
-) -> None:
+    wb,
+    history,
+):
 
     ws = wb.create_sheet(
         "GECMIS"
@@ -927,7 +1312,9 @@ def _build_history_sheet(
         "Gerçek Ürün Çekim Saati",
     ]
 
-    ws.append(headers)
+    ws.append(
+        headers
+    )
 
     _style_header(
         ws,
@@ -941,42 +1328,61 @@ def _build_history_sheet(
         key=_history_sort_key,
     )
 
-    for excel_row, item in enumerate(
+    for (
+        excel_row,
+        item,
+    ) in enumerate(
         sorted_history,
         start=2,
     ):
 
         run_dt = _parse_dt(
-            item.get("run_at")
+            item.get(
+                "run_at"
+            )
         )
 
         scraped_dt = _parse_dt(
-            item.get("scraped_at")
+            item.get(
+                "scraped_at"
+            )
         )
 
         code = (
-            item.get("code")
+            item.get(
+                "code"
+            )
             or ""
         ).strip()
 
         buy = _to_float(
-            item.get("buy")
+            item.get(
+                "buy"
+            )
         )
 
         sell = _to_float(
-            item.get("sell")
+            item.get(
+                "sell"
+            )
         )
 
         spread = _to_float(
-            item.get("spread")
+            item.get(
+                "spread"
+            )
         )
 
         spread_pct = _to_float(
-            item.get("spread_pct")
+            item.get(
+                "spread_pct"
+            )
         )
 
         site_spread = _to_float(
-            item.get("site_spread")
+            item.get(
+                "site_spread"
+            )
         )
 
         site_spread_pct = _to_float(
@@ -990,16 +1396,21 @@ def _build_history_sheet(
             and buy is not None
             and sell is not None
         ):
-            spread = sell - buy
+
+            spread = (
+                sell - buy
+            )
 
         if (
             spread_pct is None
             and spread is not None
-            and buy not in (
+            and buy
+            not in (
                 None,
                 0,
             )
         ):
+
             spread_pct = (
                 spread / buy
             ) * 100.0
@@ -1023,7 +1434,9 @@ def _build_history_sheet(
             excel_row,
             2,
             (
-                run_dt.time().replace(
+                run_dt
+                .time()
+                .replace(
                     tzinfo=None
                 )
                 if run_dt
@@ -1031,9 +1444,11 @@ def _build_history_sheet(
             ),
         )
 
-        provider_name = item.get(
-            "provider",
-            "",
+        provider_name = (
+            item.get(
+                "provider",
+                "",
+            )
         )
 
         provider_cell = ws.cell(
@@ -1061,18 +1476,10 @@ def _build_history_sheet(
             ),
         )
 
-        # ----------------------------------------------------
-        # GECMIS'TE ÜRÜNE GÖRE SATIR RENGİ
-        #
-        # DOLAR -> MAVİ
-        # EURO  -> TURUNCU
-        # ALTIN -> SARI
-        #
-        # Provider hücresini kendi banka renginde bırakıyoruz.
-        # ----------------------------------------------------
-
         product_fill = (
-            _product_fill(code)
+            _product_fill(
+                code
+            )
         )
 
         product_cell.fill = (
@@ -1083,43 +1490,54 @@ def _build_history_sheet(
             bold=True
         )
 
-        # Alış - Satış - Makas - Makas %
-        # aynı ürün rengine sahip.
-        for col in range(5, 9):
+        for col in range(
+            5,
+            9,
+        ):
+
             ws.cell(
                 excel_row,
                 col,
-            ).fill = product_fill
+            ).fill = (
+                product_fill
+            )
 
         ws.cell(
             excel_row,
             5,
-            buy
-            if buy is not None
-            else "",
+            (
+                buy
+                if buy is not None
+                else ""
+            ),
         )
 
         ws.cell(
             excel_row,
             6,
-            sell
-            if sell is not None
-            else "",
+            (
+                sell
+                if sell is not None
+                else ""
+            ),
         )
 
         ws.cell(
             excel_row,
             7,
-            spread
-            if spread is not None
-            else "",
+            (
+                spread
+                if spread is not None
+                else ""
+            ),
         )
 
         ws.cell(
             excel_row,
             8,
             (
-                spread_pct / 100.0
+                spread_pct
+                / 100.0
                 if spread_pct
                 is not None
                 else ""
@@ -1146,9 +1564,12 @@ def _build_history_sheet(
         ws.cell(
             excel_row,
             11,
-            site_spread
-            if site_spread is not None
-            else "",
+            (
+                site_spread
+                if site_spread
+                is not None
+                else ""
+            ),
         )
 
         ws.cell(
@@ -1176,13 +1597,39 @@ def _build_history_sheet(
             excel_row,
             14,
             (
-                scraped_dt.time().replace(
+                scraped_dt
+                .time()
+                .replace(
                     tzinfo=None
                 )
                 if scraped_dt
                 else ""
             ),
         )
+
+        # HAFTA SONUNDA TARİH HÜCRESİ SARI
+        if (
+            run_dt
+            and run_dt.weekday()
+            in (
+                5,
+                6,
+            )
+        ):
+
+            ws.cell(
+                excel_row,
+                1,
+            ).fill = (
+                WEEKEND_FILL
+            )
+
+            ws.cell(
+                excel_row,
+                1,
+            ).font = Font(
+                bold=True
+            )
 
         ws.cell(
             excel_row,
@@ -1211,6 +1658,7 @@ def _build_history_sheet(
             7,
             11,
         ):
+
             ws.cell(
                 excel_row,
                 col,
@@ -1222,6 +1670,7 @@ def _build_history_sheet(
             8,
             12,
         ):
+
             ws.cell(
                 excel_row,
                 col,
@@ -1235,9 +1684,11 @@ def _build_history_sheet(
         )
 
         if source_cell.value:
+
             source_cell.hyperlink = (
                 source_cell.value
             )
+
             source_cell.style = (
                 "Hyperlink"
             )
@@ -1249,7 +1700,9 @@ def _build_history_sheet(
 
         status_cell.fill = (
             _status_fill(
-                str(raw_status)
+                str(
+                    raw_status
+                )
             )
         )
 
@@ -1292,47 +1745,23 @@ def _build_history_sheet(
         },
     )
 
-    for row in ws.iter_rows(
-        min_row=2,
-        min_col=10,
-        max_col=10,
-    ):
-        row[0].alignment = Alignment(
-            wrap_text=True,
-            vertical="top",
-        )
-
-    for row in ws.iter_rows(
-        min_row=2,
-        min_col=13,
-        max_col=13,
-    ):
-        row[0].alignment = Alignment(
-            wrap_text=True,
-            vertical="top",
-        )
-
 
 # ============================================================
 # ÖZET
 # ============================================================
 
 def _build_summary_sheet(
-    wb: Workbook,
-    latest_run_at: str | None,
-    latest_rows: list[dict],
-    history: list[dict],
-) -> None:
+    wb,
+    latest_run_at,
+    latest_rows,
+    history,
+):
 
     ws = wb.create_sheet(
         "OZET"
     )
 
     ws.sheet_view.showGridLines = False
-
-    # --------------------------------------------------------
-    # BAŞLIK
-    # --------------------------------------------------------
 
     ws.merge_cells(
         "A1:AD1"
@@ -1355,35 +1784,46 @@ def _build_summary_sheet(
         vertical="center",
     )
 
-    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[
+        1
+    ].height = 28
 
     run_dt = _parse_dt(
         latest_run_at
     )
 
-    # --------------------------------------------------------
-    # TREND VERİSİ
-    # --------------------------------------------------------
+    # ========================================================
+    # GÜNLÜK TREND
+    # ========================================================
 
     bank_trends = {}
 
     for row in history:
 
         provider = (
-            row.get("provider")
+            row.get(
+                "provider"
+            )
             or ""
         ).strip()
 
         code = (
-            row.get("code")
+            row.get(
+                "code"
+            )
             or ""
         ).strip()
 
-        run_dt_item = _parse_dt(
-            row.get("run_at")
+        item_dt = _parse_dt(
+            row.get(
+                "run_at"
+            )
         )
 
-        if provider not in TARGET_BANKS:
+        if (
+            provider
+            not in TARGET_BANKS
+        ):
             continue
 
         if code not in (
@@ -1393,82 +1833,93 @@ def _build_summary_sheet(
         ):
             continue
 
-        if not run_dt_item:
+        if not item_dt:
             continue
 
-        if row.get("status") == "ERROR":
+        if (
+            row.get(
+                "status"
+            )
+            == "ERROR"
+        ):
             continue
 
-        spread_pct = _to_float(
-            row.get("spread_pct")
+        pct = _to_float(
+            row.get(
+                "spread_pct"
+            )
         )
 
-        if spread_pct is None:
+        if pct is None:
 
             buy = _to_float(
-                row.get("buy")
+                row.get(
+                    "buy"
+                )
             )
 
             sell = _to_float(
-                row.get("sell")
+                row.get(
+                    "sell"
+                )
             )
 
             if (
-                buy not in (
+                buy
+                not in (
                     None,
                     0,
                 )
-                and sell is not None
+                and sell
+                is not None
             ):
-                spread_pct = (
-                    (sell - buy)
+
+                pct = (
+                    (
+                        sell
+                        - buy
+                    )
                     / buy
                 ) * 100.0
 
-        if spread_pct is None:
+        if pct is None:
             continue
 
         date_key = (
-            run_dt_item.date()
+            item_dt.date()
         )
 
-        run_bucket = (
+        bucket = (
             bank_trends.setdefault(
                 date_key,
                 {
-                    "dt": run_dt_item,
+                    "dt": item_dt,
                     "banks": {},
                 },
             )
         )
 
-        bank_bucket = (
-            run_bucket[
-                "banks"
-            ].setdefault(
-                provider,
-                {},
-            )
-        )
-
-        bank_bucket[
-            code
-        ] = (
-            spread_pct / 100.0
+        bucket[
+            "banks"
+        ].setdefault(
+            provider,
+            {},
+        )[code] = (
+            pct / 100.0
         )
 
     trend_runs = sorted(
         bank_trends.values(),
-        key=lambda item: item["dt"],
+        key=lambda x: x["dt"],
     )
 
-    # --------------------------------------------------------
-    # YARDIMCI VERİ
-    # --------------------------------------------------------
+    # ========================================================
+    # GÜNLÜK YARDIMCI TABLO
+    # ========================================================
 
-    helper_base_row = 260
+    helper_base_row = 310
 
-    helper_headers = [
+    headers = [
         "Tarih"
     ]
 
@@ -1477,31 +1928,37 @@ def _build_summary_sheet(
         "EUR",
         "XAU",
     ):
-        for bank in TARGET_BANKS:
-            helper_headers.append(
+
+        for bank in (
+            TARGET_BANKS
+        ):
+
+            headers.append(
                 f"{code}_{bank}"
             )
 
-    for col, header in enumerate(
-        helper_headers,
+    for col, value in enumerate(
+        headers,
         start=1,
     ):
+
         ws.cell(
             helper_base_row,
             col,
-            header,
+            value,
         )
 
     category_values = []
 
-    for helper_row, run in enumerate(
+    for row_no, run in enumerate(
         trend_runs,
         start=helper_base_row + 1,
     ):
 
         label = (
-            run["dt"]
-            .strftime("%d.%m.%Y")
+            _chart_date_label(
+                run["dt"]
+            )
         )
 
         category_values.append(
@@ -1509,7 +1966,7 @@ def _build_summary_sheet(
         )
 
         ws.cell(
-            helper_row,
+            row_no,
             1,
             label,
         )
@@ -1522,22 +1979,31 @@ def _build_summary_sheet(
             "XAU",
         ):
 
-            for bank in TARGET_BANKS:
+            for bank in (
+                TARGET_BANKS
+            ):
 
                 value = (
                     run["banks"]
-                    .get(bank, {})
-                    .get(code)
+                    .get(
+                        bank,
+                        {},
+                    )
+                    .get(
+                        code
+                    )
                 )
 
-                cell = ws.cell(
-                    helper_row,
-                    col,
-                )
+                if (
+                    value
+                    is not None
+                ):
 
-                if value is not None:
-                    cell.value = value
-                    cell.number_format = (
+                    ws.cell(
+                        row_no,
+                        col,
+                        value,
+                    ).number_format = (
                         "0.00%"
                     )
 
@@ -1545,80 +2011,75 @@ def _build_summary_sheet(
 
     helper_end_row = (
         helper_base_row
-        + len(trend_runs)
+        + len(
+            trend_runs
+        )
     )
 
-    # --------------------------------------------------------
-    # ORTAK GRAFİK AYARLARI
-    # --------------------------------------------------------
+    # ========================================================
+    # GRAFİK STİLİ
+    # ========================================================
 
     def style_chart(
         chart,
         title,
-        show_legend=False,
+        legend=False,
+        width=19.0,
+        height=8.0,
     ):
 
         chart.style = 10
-
         chart.title = title
 
-        # Biraz daha geniş.
-        chart.height = 10.0
-        chart.width = 19.0
+        chart.width = width
+        chart.height = height
 
         chart.y_axis.title = (
             "Makas %"
         )
 
-        chart.x_axis.title = None
-
         try:
-            chart.x_axis.axPos = "b"
-            chart.x_axis.delete = False
-            chart.x_axis.tickLblPos = "low"
-            chart.x_axis.tickLblSkip = 1
-            chart.x_axis.tickMarkSkip = 1
-            chart.x_axis.majorTickMark = (
-                "none"
-            )
-            chart.x_axis.minorTickMark = (
-                "none"
-            )
-        except Exception:
-            pass
 
-        try:
-            chart.y_axis.majorGridlines = (
-                None
-            )
-            chart.y_axis.majorTickMark = (
-                "none"
-            )
-            chart.y_axis.minorTickMark = (
-                "none"
-            )
-        except Exception:
-            pass
-
-        if not show_legend:
-            chart.legend = None
-        else:
-            # Legend çizgilerin üzerinde durmasın.
-            # Grafiğin ALTINA taşınıyor.
-            try:
-                chart.legend.position = "b"
-                chart.legend.overlay = False
-            except Exception:
-                pass
-
-        try:
             chart.y_axis.numFmt = (
                 "0.00%"
             )
+
+            chart.x_axis.tickLblPos = (
+                "low"
+            )
+
+            chart.x_axis.tickLblSkip = 1
+
+            chart.x_axis.majorTickMark = (
+                "none"
+            )
+
+            chart.y_axis.majorTickMark = (
+                "none"
+            )
+
         except Exception:
             pass
 
-        # Tarihleri biraz küçült.
+        if legend:
+
+            try:
+
+                chart.legend.position = (
+                    "b"
+                )
+
+                chart.legend.overlay = (
+                    False
+                )
+
+            except Exception:
+                pass
+
+        else:
+
+            chart.legend = None
+
         x_axis_text = RichText(
             bodyPr=RichTextProperties(
                 rot=-2700000
@@ -1637,47 +2098,26 @@ def _build_summary_sheet(
             ],
         )
 
-        y_axis_text = RichText(
-            bodyPr=RichTextProperties(),
-            p=[
-                Paragraph(
-                    pPr=ParagraphProperties(
-                        defRPr=CharacterProperties(
-                            sz=750
-                        )
-                    ),
-                    endParaRPr=CharacterProperties(
-                        sz=750
-                    ),
-                )
-            ],
-        )
-
         try:
+
             chart.x_axis.txPr = (
                 x_axis_text
             )
-            chart.y_axis.txPr = (
-                y_axis_text
-            )
+
         except Exception:
             pass
 
     # ========================================================
-    # 3 TOPLU GRAFİK
-    #
-    # Daha fazla yatay mesafe:
-    #
-    # A -> K -> U
+    # ÜST 3 GRAFİK
     # ========================================================
 
-    top_chart_positions = [
+    positions = [
         "A3",
         "K3",
         "U3",
     ]
 
-    product_start_columns = {
+    product_start = {
         "USD": 2,
         "EUR": 7,
         "XAU": 12,
@@ -1699,30 +2139,26 @@ def _build_summary_sheet(
                 f"{PRODUCT_NAMES[code]} - "
                 "5 Banka Makas %"
             ),
-            show_legend=True,
+            legend=True,
         )
 
-        start_col = (
-            product_start_columns[
-                code
-            ]
-        )
-
-        cached_series = []
+        cached = []
 
         for bank_index, bank in enumerate(
             TARGET_BANKS
         ):
 
-            data_col = (
-                start_col
+            col = (
+                product_start[
+                    code
+                ]
                 + bank_index
             )
 
             data = Reference(
                 ws,
-                min_col=data_col,
-                max_col=data_col,
+                min_col=col,
+                max_col=col,
                 min_row=helper_base_row,
                 max_row=helper_end_row,
             )
@@ -1734,13 +2170,18 @@ def _build_summary_sheet(
 
             values = [
                 run["banks"]
-                .get(bank, {})
-                .get(code)
+                .get(
+                    bank,
+                    {},
+                )
+                .get(
+                    code
+                )
                 for run
                 in trend_runs
             ]
 
-            cached_series.append(
+            cached.append(
                 (
                     bank,
                     values,
@@ -1758,13 +2199,15 @@ def _build_summary_sheet(
             cats
         )
 
-        for series_index, series in enumerate(
+        for index, series in enumerate(
             chart.series
         ):
 
-            bank = TARGET_BANKS[
-                series_index
-            ]
+            bank = (
+                TARGET_BANKS[
+                    index
+                ]
+            )
 
             color = (
                 COMPARISON_BANK_COLORS[
@@ -1773,6 +2216,7 @@ def _build_summary_sheet(
             )
 
             try:
+
                 series.graphicalProperties.line.solidFill = (
                     color
                 )
@@ -1787,76 +2231,24 @@ def _build_summary_sheet(
 
                 series.marker.size = 5
 
-                series.marker.graphicalProperties.solidFill = (
-                    color
-                )
-
-                series.marker.graphicalProperties.line.solidFill = (
-                    color
-                )
-
             except Exception:
                 pass
 
         _cache_line_chart(
             chart,
             category_values,
-            cached_series,
+            cached,
         )
-
-        all_values = []
-
-        for _, values in cached_series:
-            all_values.extend(
-                [
-                    value
-                    for value in values
-                    if value is not None
-                ]
-            )
-
-        if all_values:
-
-            minimum = min(
-                all_values
-            )
-
-            maximum = max(
-                all_values
-            )
-
-            padding = max(
-                (
-                    maximum
-                    - minimum
-                ) * 0.18,
-                maximum * 0.03,
-                0.00005,
-            )
-
-            chart.y_axis.scaling.min = (
-                max(
-                    0,
-                    minimum - padding,
-                )
-            )
-
-            chart.y_axis.scaling.max = (
-                maximum + padding
-            )
 
         ws.add_chart(
             chart,
-            top_chart_positions[
+            positions[
                 product_index
             ],
         )
 
     # ========================================================
-    # 15 TEK BANKA GRAFİĞİ
-    #
-    # Toplu grafiklerle çakışmaması için
-    # aşağıdan başlatıldı.
+    # 15 BANKA GRAFİĞİ
     # ========================================================
 
     chart_columns = [
@@ -1865,7 +2257,7 @@ def _build_summary_sheet(
         "U",
     ]
 
-    chart_row_starts = [
+    chart_rows = [
         29,
         55,
         81,
@@ -1896,8 +2288,8 @@ def _build_summary_sheet(
                 ),
             )
 
-            data_col = (
-                product_start_columns[
+            col = (
+                product_start[
                     code
                 ]
                 + TARGET_BANKS.index(
@@ -1907,8 +2299,8 @@ def _build_summary_sheet(
 
             data = Reference(
                 ws,
-                min_col=data_col,
-                max_col=data_col,
+                min_col=col,
+                max_col=col,
                 min_row=helper_base_row,
                 max_row=helper_end_row,
             )
@@ -1931,20 +2323,23 @@ def _build_summary_sheet(
 
             values = [
                 run["banks"]
-                .get(bank, {})
-                .get(code)
+                .get(
+                    bank,
+                    {},
+                )
+                .get(
+                    code
+                )
                 for run
                 in trend_runs
             ]
 
-            # --------------------------------------------
-            # ÇİZGİ RENGİ
-            # --------------------------------------------
-
             try:
 
                 series = (
-                    chart.series[0]
+                    chart.series[
+                        0
+                    ]
                 )
 
                 color = (
@@ -1967,22 +2362,10 @@ def _build_summary_sheet(
 
                 series.marker.size = 6
 
-                series.marker.graphicalProperties.solidFill = (
-                    color
-                )
-
-                series.marker.graphicalProperties.line.solidFill = (
-                    color
-                )
-
             except Exception:
                 pass
 
-            # --------------------------------------------
-            # BANKA ARKA PLAN RENGİ
-            # --------------------------------------------
-
-            background_color = (
+            background = (
                 BANK_CHART_COLORS.get(
                     bank,
                     DEFAULT_BANK_CHART_COLOR,
@@ -1990,82 +2373,24 @@ def _build_summary_sheet(
             )
 
             try:
+
                 chart.graphical_properties = (
                     GraphicalProperties(
                         noFill=False,
-                        solidFill=background_color,
+                        solidFill=background,
                     )
                 )
+
             except Exception:
                 pass
-
-            try:
-                chart.plot_area.graphicalProperties = (
-                    GraphicalProperties(
-                        noFill=False,
-                        solidFill=background_color,
-                    )
-                )
-            except Exception:
-                pass
-
-            # --------------------------------------------
-            # NOKTA ÜZERİNDE MAKAS %
-            # --------------------------------------------
 
             chart.dLbls = (
                 DataLabelList()
             )
 
             chart.dLbls.showVal = True
-
-            chart.dLbls.numFmt = (
-                "0.00%"
-            )
-
+            chart.dLbls.numFmt = "0.00%"
             chart.dLbls.dLblPos = "t"
-
-            chart.dLbls.showLegendKey = (
-                False
-            )
-
-            chart.dLbls.showCatName = (
-                False
-            )
-
-            chart.dLbls.showSerName = (
-                False
-            )
-
-            try:
-                chart.dLbls.showLeaderLines = (
-                    False
-                )
-            except Exception:
-                pass
-
-            data_label_text = RichText(
-                bodyPr=RichTextProperties(),
-                p=[
-                    Paragraph(
-                        pPr=ParagraphProperties(
-                            defRPr=CharacterProperties(
-                                sz=650
-                            )
-                        ),
-                        endParaRPr=CharacterProperties(
-                            sz=650
-                        ),
-                    )
-                ],
-            )
-
-            try:
-                chart.dLbls.txPr = (
-                    data_label_text
-                )
-            except Exception:
-                pass
 
             _cache_line_chart(
                 chart,
@@ -2080,73 +2405,504 @@ def _build_summary_sheet(
                 ],
             )
 
-            valid_values = [
-                value
-                for value in values
-                if value is not None
-            ]
+            ws.add_chart(
+                chart,
+                (
+                    f"{chart_columns[product_index]}"
+                    f"{chart_rows[bank_index]}"
+                ),
+            )
 
-            if valid_values:
+    # ========================================================
+    # AYLIK ORTALAMA
+    # ========================================================
 
-                minimum = min(
-                    valid_values
+    monthly_data = (
+        _build_monthly_averages(
+            history
+        )
+    )
+
+    months = sorted(
+        monthly_data.keys()
+    )
+
+    monthly_title_row = 160
+
+    ws.merge_cells(
+        start_row=monthly_title_row,
+        start_column=1,
+        end_row=monthly_title_row,
+        end_column=5,
+    )
+
+    monthly_title = ws.cell(
+        monthly_title_row,
+        1,
+    )
+
+    monthly_title.value = (
+        "AYLIK ORTALAMA MAKAS %"
+    )
+
+    monthly_title.fill = (
+        TITLE_FILL
+    )
+
+    monthly_title.font = Font(
+        bold=True,
+        size=13,
+        color="1F4E78",
+    )
+
+    monthly_title.alignment = Alignment(
+        horizontal="center"
+    )
+
+    monthly_header_row = (
+        monthly_title_row + 1
+    )
+
+    monthly_headers = [
+        "Ay",
+        "Banka",
+        "Dolar Ort.",
+        "Euro Ort.",
+        "Gram Altın Ort.",
+    ]
+
+    for col, header in enumerate(
+        monthly_headers,
+        start=1,
+    ):
+
+        ws.cell(
+            monthly_header_row,
+            col,
+            header,
+        )
+
+    _style_header(
+        ws,
+        monthly_header_row,
+        1,
+        5,
+    )
+
+    ws.cell(
+        monthly_header_row,
+        3,
+    ).fill = (
+        USD_HEADER_FILL
+    )
+
+    ws.cell(
+        monthly_header_row,
+        4,
+    ).fill = (
+        EUR_HEADER_FILL
+    )
+
+    ws.cell(
+        monthly_header_row,
+        5,
+    ).fill = (
+        XAU_HEADER_FILL
+    )
+
+    row_no = (
+        monthly_header_row
+        + 1
+    )
+
+    MONTH_NAMES = {
+        1: "Ocak",
+        2: "Şubat",
+        3: "Mart",
+        4: "Nisan",
+        5: "Mayıs",
+        6: "Haziran",
+        7: "Temmuz",
+        8: "Ağustos",
+        9: "Eylül",
+        10: "Ekim",
+        11: "Kasım",
+        12: "Aralık",
+    }
+
+    for year, month in months:
+
+        month_label = (
+            f"{MONTH_NAMES[month]} "
+            f"{year}"
+        )
+
+        for bank in TARGET_BANKS:
+
+            ws.cell(
+                row_no,
+                1,
+                month_label,
+            )
+
+            bank_cell = ws.cell(
+                row_no,
+                2,
+                bank,
+            )
+
+            bank_cell.fill = (
+                _provider_fill(
+                    bank
                 )
+            )
 
-                maximum = max(
-                    valid_values
-                )
+            bank_cell.font = Font(
+                bold=True
+            )
 
-                padding = max(
-                    (
-                        maximum
-                        - minimum
-                    ) * 0.25,
-                    maximum * 0.03,
-                    0.00005,
-                )
+            for col, code in (
+                (3, "USD"),
+                (4, "EUR"),
+                (5, "XAU"),
+            ):
 
-                chart.y_axis.scaling.min = (
-                    max(
-                        0,
-                        minimum
-                        - padding,
+                value = (
+                    monthly_data
+                    .get(
+                        (
+                            year,
+                            month,
+                        ),
+                        {},
+                    )
+                    .get(
+                        bank,
+                        {},
+                    )
+                    .get(
+                        code
                     )
                 )
 
-                chart.y_axis.scaling.max = (
-                    maximum
-                    + padding
+                cell = ws.cell(
+                    row_no,
+                    col,
                 )
 
-            position = (
-                f"{chart_columns[product_index]}"
-                f"{chart_row_starts[bank_index]}"
-            )
+                cell.fill = (
+                    _product_fill(
+                        code
+                    )
+                )
 
-            ws.add_chart(
-                chart,
-                position,
-            )
+                if value is not None:
+
+                    cell.value = value
+
+                    cell.number_format = (
+                        "0.00%"
+                    )
+
+            for col in range(
+                1,
+                6,
+            ):
+
+                ws.cell(
+                    row_no,
+                    col,
+                ).border = (
+                    THIN_BORDER
+                )
+
+            row_no += 1
 
     # ========================================================
-    # ÇEKİM ÖZETİ
+    # AYLIK GRAFİK YARDIMCI VERİSİ
     # ========================================================
 
-    summary_start = 160
+    monthly_helper_row = 400
+
+    monthly_chart_labels = [
+        (
+            f"{MONTH_NAMES[month]} "
+            f"{year}"
+        )
+        for year, month
+        in months
+    ]
+
+    ws.cell(
+        monthly_helper_row,
+        1,
+        "Ay",
+    )
+
+    col = 2
+
+    monthly_column_map = {}
+
+    for code in (
+        "USD",
+        "EUR",
+        "XAU",
+    ):
+
+        monthly_column_map[
+            code
+        ] = {}
+
+        for bank in TARGET_BANKS:
+
+            monthly_column_map[
+                code
+            ][bank] = col
+
+            ws.cell(
+                monthly_helper_row,
+                col,
+                bank,
+            )
+
+            col += 1
+
+    for index, (
+        year,
+        month,
+    ) in enumerate(
+        months,
+        start=monthly_helper_row + 1,
+    ):
+
+        label = (
+            f"{MONTH_NAMES[month]} "
+            f"{year}"
+        )
+
+        ws.cell(
+            index,
+            1,
+            label,
+        )
+
+        for code in (
+            "USD",
+            "EUR",
+            "XAU",
+        ):
+
+            for bank in (
+                TARGET_BANKS
+            ):
+
+                value = (
+                    monthly_data
+                    .get(
+                        (
+                            year,
+                            month,
+                        ),
+                        {},
+                    )
+                    .get(
+                        bank,
+                        {},
+                    )
+                    .get(
+                        code
+                    )
+                )
+
+                target_col = (
+                    monthly_column_map[
+                        code
+                    ][bank]
+                )
+
+                if value is not None:
+
+                    ws.cell(
+                        index,
+                        target_col,
+                        value,
+                    ).number_format = (
+                        "0.00%"
+                    )
+
+    monthly_end_row = (
+        monthly_helper_row
+        + len(months)
+    )
+
+    # ========================================================
+    # 3 AYLIK ORTALAMA GRAFİĞİ
+    # ========================================================
+
+    monthly_chart_positions = [
+        "A190",
+        "K190",
+        "U190",
+    ]
+
+    for product_index, code in enumerate(
+        (
+            "USD",
+            "EUR",
+            "XAU",
+        )
+    ):
+
+        chart = LineChart()
+
+        style_chart(
+            chart,
+            (
+                f"{PRODUCT_NAMES[code]} - "
+                "Aylık Ortalama Makas %"
+            ),
+            legend=True,
+            width=19.0,
+            height=8.0,
+        )
+
+        cached = []
+
+        for bank in TARGET_BANKS:
+
+            data_col = (
+                monthly_column_map[
+                    code
+                ][bank]
+            )
+
+            data = Reference(
+                ws,
+                min_col=data_col,
+                max_col=data_col,
+                min_row=monthly_helper_row,
+                max_row=monthly_end_row,
+            )
+
+            chart.add_data(
+                data,
+                titles_from_data=True,
+            )
+
+            values = [
+                (
+                    monthly_data
+                    .get(
+                        month_key,
+                        {},
+                    )
+                    .get(
+                        bank,
+                        {},
+                    )
+                    .get(
+                        code
+                    )
+                )
+                for month_key
+                in months
+            ]
+
+            cached.append(
+                (
+                    bank,
+                    values,
+                )
+            )
+
+        cats = Reference(
+            ws,
+            min_col=1,
+            min_row=monthly_helper_row + 1,
+            max_row=monthly_end_row,
+        )
+
+        chart.set_categories(
+            cats
+        )
+
+        for index, series in enumerate(
+            chart.series
+        ):
+
+            bank = (
+                TARGET_BANKS[
+                    index
+                ]
+            )
+
+            color = (
+                COMPARISON_BANK_COLORS[
+                    bank
+                ]
+            )
+
+            try:
+
+                series.graphicalProperties.line.solidFill = (
+                    color
+                )
+
+                series.graphicalProperties.line.width = (
+                    24000
+                )
+
+                series.marker.symbol = (
+                    "circle"
+                )
+
+                series.marker.size = 6
+
+            except Exception:
+                pass
+
+        _cache_line_chart(
+            chart,
+            monthly_chart_labels,
+            cached,
+        )
+
+        ws.add_chart(
+            chart,
+            monthly_chart_positions[
+                product_index
+            ],
+        )
+
+    # ========================================================
+    # SON ÇEKİM BİLGİLERİ
+    # ========================================================
+
+    summary_start = 220
 
     providers = {
-        row.get("provider")
+        row.get(
+            "provider"
+        )
         for row in latest_rows
-        if row.get("provider")
+        if row.get(
+            "provider"
+        )
     }
 
     error_count = sum(
-        row.get("status") == "ERROR"
+        row.get(
+            "status"
+        )
+        == "ERROR"
         for row in latest_rows
     )
 
     control_count = sum(
-        row.get("status") == "KONTROL"
+        row.get(
+            "status"
+        )
+        == "KONTROL"
         for row in latest_rows
     )
 
@@ -2166,14 +2922,20 @@ def _build_summary_sheet(
             else ""
         ),
         (
-            run_dt.time().replace(
+            run_dt
+            .time()
+            .replace(
                 tzinfo=None
             )
             if run_dt
             else ""
         ),
-        len(providers),
-        len(latest_rows),
+        len(
+            providers
+        ),
+        len(
+            latest_rows
+        ),
         error_count,
         control_count,
     ]
@@ -2188,42 +2950,28 @@ def _build_summary_sheet(
         )
     ):
 
-        row_no = (
+        row = (
             summary_start
             + offset
         )
 
-        label_cell = ws.cell(
-            row_no,
+        ws.cell(
+            row,
             1,
             label,
-        )
-
-        label_cell.font = Font(
+        ).font = Font(
             bold=True
         )
 
-        label_cell.fill = PatternFill(
-            "solid",
-            fgColor="EAF2F8",
-        )
+        ws.cell(
+            row,
+            1,
+        ).fill = TITLE_FILL
 
-        label_cell.border = (
-            THIN_BORDER
-        )
-
-        value_cell = ws.cell(
-            row_no,
+        ws.cell(
+            row,
             2,
             value,
-        )
-
-        value_cell.border = (
-            THIN_BORDER
-        )
-
-        value_cell.alignment = Alignment(
-            horizontal="center"
         )
 
     ws.cell(
@@ -2241,42 +2989,53 @@ def _build_summary_sheet(
     )
 
     # ========================================================
-    # 5 BANKA ARASINDA EN DÜŞÜK MAKAS
+    # EN DÜŞÜK MAKAS - SADECE 5 BANKA
     # ========================================================
 
-    best_table_row = (
-        summary_start + 8
-    )
+    best_row = 230
 
     ws.merge_cells(
-        start_row=best_table_row - 1,
+        start_row=best_row,
         start_column=1,
-        end_row=best_table_row - 1,
+        end_row=best_row,
         end_column=6,
     )
 
-    best_title = ws.cell(
-        best_table_row - 1,
+    ws.cell(
+        best_row,
         1,
+        (
+            "5 BANKA ARASINDA "
+            "EN DÜŞÜK MAKAS"
+        ),
     )
 
-    best_title.value = (
-        "5 BANKA ARASINDA EN DÜŞÜK MAKAS"
-    )
+    ws.cell(
+        best_row,
+        1,
+    ).fill = TITLE_FILL
 
-    best_title.font = Font(
+    ws.cell(
+        best_row,
+        1,
+    ).font = Font(
         bold=True,
         size=12,
         color="1F4E78",
     )
 
-    best_title.fill = TITLE_FILL
-
-    best_title.alignment = Alignment(
+    ws.cell(
+        best_row,
+        1,
+    ).alignment = Alignment(
         horizontal="center"
     )
 
-    headers = [
+    header_row = (
+        best_row + 1
+    )
+
+    best_headers = [
         "Ürün",
         "Banka Sayısı",
         "En Düşük Makas %",
@@ -2286,24 +3045,25 @@ def _build_summary_sheet(
     ]
 
     for col, header in enumerate(
-        headers,
+        best_headers,
         start=1,
     ):
+
         ws.cell(
-            best_table_row,
+            header_row,
             col,
             header,
         )
 
     _style_header(
         ws,
-        best_table_row,
+        header_row,
         1,
         6,
     )
 
-    current_row = (
-        best_table_row + 1
+    row_no = (
+        header_row + 1
     )
 
     for code in (
@@ -2312,38 +3072,49 @@ def _build_summary_sheet(
         "XAU",
     ):
 
-        product_rows = [
-            row
-            for row in latest_rows
-            if (
-                row.get("code")
-                == code
-                and (
-                    row.get(
-                        "provider"
-                    )
-                    or ""
-                ).strip()
-                in TARGET_BANKS
-            )
-        ]
+        valid = []
 
-        valid_rows = []
+        for item in latest_rows:
 
-        for item in product_rows:
+            provider = (
+                item.get(
+                    "provider"
+                )
+                or ""
+            ).strip()
 
             if (
-                item.get("status")
+                provider
+                not in TARGET_BANKS
+            ):
+                continue
+
+            if (
+                item.get(
+                    "code"
+                )
+                != code
+            ):
+                continue
+
+            if (
+                item.get(
+                    "status"
+                )
                 == "ERROR"
             ):
                 continue
 
             buy = _to_float(
-                item.get("buy")
+                item.get(
+                    "buy"
+                )
             )
 
             sell = _to_float(
-                item.get("sell")
+                item.get(
+                    "sell"
+                )
             )
 
             pct = _to_float(
@@ -2354,29 +3125,32 @@ def _build_summary_sheet(
 
             if (
                 pct is None
-                and buy not in (
+                and buy
+                not in (
                     None,
                     0,
                 )
-                and sell is not None
+                and sell
+                is not None
             ):
+
                 pct = (
-                    (sell - buy)
+                    (
+                        sell - buy
+                    )
                     / buy
                 ) * 100.0
 
             if (
-                buy not in (
-                    None,
-                    0,
-                )
+                pct is not None
+                and buy is not None
                 and sell is not None
-                and pct is not None
             ):
-                valid_rows.append(
+
+                valid.append(
                     (
                         pct,
-                        item,
+                        provider,
                         buy,
                         sell,
                     )
@@ -2384,75 +3158,60 @@ def _build_summary_sheet(
 
         best = (
             min(
-                valid_rows,
-                key=lambda item: item[0],
+                valid,
+                key=lambda x: x[0],
             )
-            if valid_rows
+            if valid
             else None
         )
 
-        product_name_cell = ws.cell(
-            current_row,
+        product_cell = ws.cell(
+            row_no,
             1,
             PRODUCT_NAMES[
                 code
             ],
         )
 
-        # En düşük makas tablosunda da ürün rengi.
-        product_name_cell.fill = (
-            _product_fill(code)
+        product_cell.fill = (
+            _product_fill(
+                code
+            )
         )
 
-        product_name_cell.font = Font(
+        product_cell.font = Font(
             bold=True
         )
 
-        bank_count = len(
-            {
-                (
-                    row.get(
-                        "provider"
-                    )
-                    or ""
-                ).strip()
-                for row
-                in product_rows
-            }
-        )
-
         ws.cell(
-            current_row,
+            row_no,
             2,
-            bank_count,
+            len(valid),
         )
 
         if best:
 
-            pct, item, buy, sell = best
-
-            ws.cell(
-                current_row,
-                3,
-                pct / 100.0,
+            pct, provider, buy, sell = (
+                best
             )
 
-            provider_name = (
-                item.get(
-                    "provider"
-                )
-                or ""
-            ).strip()
+            ws.cell(
+                row_no,
+                3,
+                pct / 100.0,
+            ).number_format = (
+                "0.00%"
+            )
 
             bank_cell = ws.cell(
-                current_row,
+                row_no,
                 4,
-                provider_name,
+                provider,
             )
 
             bank_cell.fill = (
                 _provider_fill(
-                    provider_name
+                    provider
                 )
             )
 
@@ -2461,67 +3220,39 @@ def _build_summary_sheet(
             )
 
             ws.cell(
-                current_row,
+                row_no,
                 5,
                 buy,
+            ).number_format = (
+                "#,##0.0000"
             )
 
             ws.cell(
-                current_row,
+                row_no,
                 6,
                 sell,
-            )
-
-            ws.cell(
-                current_row,
-                3,
-            ).number_format = (
-                "0.00%"
-            )
-
-            ws.cell(
-                current_row,
-                5,
             ).number_format = (
                 "#,##0.0000"
             )
 
-            ws.cell(
-                current_row,
-                6,
-            ).number_format = (
-                "#,##0.0000"
-            )
+        row_no += 1
 
-        for col in range(
-            1,
-            7,
-        ):
-            ws.cell(
-                current_row,
-                col,
-            ).border = (
-                THIN_BORDER
-            )
-
-        current_row += 1
-
-    # --------------------------------------------------------
-    # SÜTUN GENİŞLİKLERİ
-    # --------------------------------------------------------
+    # ========================================================
+    # GENİŞLİKLER
+    # ========================================================
 
     _set_widths(
         ws,
         {
             "A": 22,
-            "B": 18,
+            "B": 20,
             "C": 18,
             "D": 18,
             "E": 20,
-            "F": 16,
+            "F": 18,
             "G": 18,
-            "H": 16,
-            "I": 20,
+            "H": 18,
+            "I": 18,
             "J": 8,
 
             "K": 22,
@@ -2563,21 +3294,22 @@ def build_excel(
     )
 
     if not history:
+
         raise RuntimeError(
             "Excel oluşturmak için "
             "geçmiş veri bulunamadı."
         )
 
-    # --------------------------------------------------------
-    # AYNI GÜN BİRDEN FAZLA ÇALIŞMA VARSA
-    # İLK ÇALIŞTIRMA KALIR.
-    # --------------------------------------------------------
-
-    daily_history = _daily_history(
-        history
+    # Aynı gün birden fazla çalışma varsa
+    # yalnızca İLK çalışma kullanılır.
+    daily_history = (
+        _daily_history(
+            history
+        )
     )
 
     if not daily_history:
+
         raise RuntimeError(
             "Geçerli günlük geçmiş "
             "verisi bulunamadı."
@@ -2591,26 +3323,25 @@ def build_excel(
 
     wb = Workbook()
 
-    default_sheet = wb.active
+    default_sheet = (
+        wb.active
+    )
 
     wb.remove(
         default_sheet
     )
 
-    # 1
     _build_current_sheet(
         wb,
         latest_run_at,
         latest_rows,
     )
 
-    # 2
     _build_history_sheet(
         wb,
         daily_history,
     )
 
-    # 3
     _build_summary_sheet(
         wb,
         latest_run_at,
