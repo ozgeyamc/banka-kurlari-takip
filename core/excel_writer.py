@@ -2708,6 +2708,13 @@ def build_excel(
     wb.save(
         output_path
     )
+
+
+Ozge Yamac (Kitle Musteri Ve Urun) <OzgeYam@garantibbva.com.tr> şunları yazdı (1 Eyl 2026 10:37):
+ 
+Sınıflandırma: Açık / Kişisel Veri İçermez
+ 
+ 
 from __future__ import annotations
  
 import csv
