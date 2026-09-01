@@ -4,10 +4,8 @@ on:
   workflow_dispatch:
 
   schedule:
-    # Her gün Türkiye saatiyle 10:17.
-    # GitHub Actions saat başında daha yoğun olabildiği için
-    # 10:00 yerine 10:17 seçildi.
-    - cron: "17 10 * * *"
+    # Her gün Türkiye saatiyle 10:00.
+    - cron: "0 10 * * *"
       timezone: "Europe/Istanbul"
 
 permissions:
