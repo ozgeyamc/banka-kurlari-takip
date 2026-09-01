@@ -1280,7 +1280,7 @@ def _style_chart(
 
     chart.style = 10
     chart.title = title
-    chart.height = 8.5
+    chart.height = 10.0
     chart.width = 21.0
 
     chart.y_axis.title = "Makas %"
