@@ -2211,7 +2211,7 @@ def _build_summary_sheet(
             chart.x_axis.title = None
 
             # BOYUTLAR SENİN ÇALIŞAN KODUNLA AYNI
-            chart.height = 8.5
+            chart.height = 10.0
             chart.width = 21.0
 
             try:
