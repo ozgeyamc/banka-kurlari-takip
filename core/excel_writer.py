@@ -344,14 +344,20 @@ def _apply_table(ws, start_row, end_row, end_col, name):
 
 def _date_label(dt, include_time=False):
 
+    # Excel/openpyxl kategori ekseninde tek tek tick-label font rengi
+    # atanamadigi icin hafta sonunu renkli Unicode isaretleriyle
+    # belirginlestiriyoruz. Cmt = mavi, Paz = kirmizi.
     if dt.weekday() == 5:
+        prefix = "🔵 "
         suffix = " Cmt"
     elif dt.weekday() == 6:
+        prefix = "🔴 "
         suffix = " Paz"
     else:
+        prefix = ""
         suffix = ""
 
-    result = dt.strftime("%d.%m") + suffix
+    result = prefix + dt.strftime("%d.%m") + suffix
 
     if include_time:
         result += " " + dt.strftime("%H:%M")
