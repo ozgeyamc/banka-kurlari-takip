@@ -7,6 +7,7 @@ from typing import Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.data_source import NumData, NumVal, StrData, StrRef, StrVal
 from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.chart.text import RichText
