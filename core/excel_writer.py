@@ -916,10 +916,32 @@ def _style_chart(chart, title, legend=True):
     chart.title = title
     chart.width = 16.0
     chart.height = 8.0
+
+    # Y ekseni: sayısal yüzde ölçeği mutlaka görünür.
     chart.y_axis.title = "Makas %"
     chart.y_axis.numFmt = "0.00%"
+    chart.y_axis.delete = False
+    chart.y_axis.tickLblPos = "nextTo"
+    chart.y_axis.majorTickMark = "out"
+    chart.y_axis.minorTickMark = "none"
     chart.y_axis.majorGridlines = None
+
+    # X ekseni: helper sayfasındaki metin tarihleri kategori etiketi olarak göster.
+    chart.x_axis.delete = False
+    chart.x_axis.tickLblPos = "low"
+    chart.x_axis.majorTickMark = "out"
+    chart.x_axis.minorTickMark = "none"
+    chart.x_axis.tickLblSkip = 1
+    chart.x_axis.tickMarkSkip = 1
     chart.x_axis.majorGridlines = None
+
+    # İki ekseni açıkça birbirine bağla. Excel'in eksen etiketlerini
+    # gizlemesine yol açan varsayılan/bozuk cross ayarlarını engeller.
+    try:
+        chart.x_axis.crosses = "autoZero"
+        chart.y_axis.crosses = "autoZero"
+    except Exception:
+        pass
 
     try:
         chart.visible_cells_only = False
@@ -927,17 +949,25 @@ def _style_chart(chart, title, legend=True):
         pass
 
     try:
-        chart.x_axis.tickLblPos = "low"
-        chart.x_axis.majorTickMark = "none"
-        chart.y_axis.majorTickMark = "none"
         chart.x_axis.txPr = RichText(
             bodyPr=RichTextProperties(rot=-2700000),
             p=[
                 Paragraph(
                     pPr=ParagraphProperties(
-                        defRPr=CharacterProperties(sz=650)
+                        defRPr=CharacterProperties(sz=700)
                     ),
-                    endParaRPr=CharacterProperties(sz=650),
+                    endParaRPr=CharacterProperties(sz=700),
+                )
+            ],
+        )
+        chart.y_axis.txPr = RichText(
+            bodyPr=RichTextProperties(),
+            p=[
+                Paragraph(
+                    pPr=ParagraphProperties(
+                        defRPr=CharacterProperties(sz=700)
+                    ),
+                    endParaRPr=CharacterProperties(sz=700),
                 )
             ],
         )
@@ -1387,7 +1417,23 @@ def _build_summary_sheet(wb, latest_run_at, latest_rows, history):
                 values = [run["banks"].get(bank, {}).get(code) for run in trends]
                 _cache_line_chart(chart, category_labels, [(PRODUCT_NAMES[code], values)])
                 set_bounds(chart, values, ratio=0.20)
-                chart.dLbls = None
+
+                # Tekil banka grafiklerinde noktanın sayısal Makas % değeri.
+                chart.dLbls = DataLabelList()
+                chart.dLbls.showVal = True
+                chart.dLbls.showSerName = False
+                chart.dLbls.showCatName = False
+                chart.dLbls.showLegendKey = False
+                chart.dLbls.numFmt = "0.00%"
+                chart.dLbls.dLblPos = "t"
+
+                # Tarih ve Y ekseni etiketlerini ayrıca zorla görünür tut.
+                chart.x_axis.delete = False
+                chart.x_axis.tickLblPos = "low"
+                chart.x_axis.tickLblSkip = 1
+                chart.y_axis.delete = False
+                chart.y_axis.tickLblPos = "nextTo"
+
                 ws.add_chart(chart, f"{GRAPH_COLS[product_index]}{bank_row}")
 
     _set_widths(ws, {
