@@ -918,57 +918,43 @@ def _style_chart(chart, title, legend=True):
     chart.width = 16.0
     chart.height = 8.0
 
-    # Y ekseni: sayısal yüzde ölçeği mutlaka görünür.
-    chart.y_axis.title = "Makas %"
-    chart.y_axis.numFmt = "0.00%"
-    chart.y_axis.delete = False
-    chart.y_axis.tickLblPos = "nextTo"
-    chart.y_axis.majorTickMark = "out"
-    chart.y_axis.minorTickMark = "none"
+    # --------------------------------------------------------
+    # Y EKSENI TAMAMEN GIZLI
+    # Grafik uzerindeki nokta degerleri tekil grafiklerde kalir.
+    # --------------------------------------------------------
+    chart.y_axis.title = None
+    chart.y_axis.delete = True
     chart.y_axis.majorGridlines = None
 
-    # X ekseni: helper sayfasındaki metin tarihleri kategori etiketi olarak göster.
+    # --------------------------------------------------------
+    # X EKSENI / TARIHLER
+    # --------------------------------------------------------
     chart.x_axis.delete = False
     chart.x_axis.tickLblPos = "low"
-    chart.x_axis.majorTickMark = "out"
+    chart.x_axis.majorTickMark = "none"
     chart.x_axis.minorTickMark = "none"
     chart.x_axis.tickLblSkip = 1
     chart.x_axis.tickMarkSkip = 1
     chart.x_axis.majorGridlines = None
-
-    # İki ekseni açıkça birbirine bağla. Excel'in eksen etiketlerini
-    # gizlemesine yol açan varsayılan/bozuk cross ayarlarını engeller.
-    try:
-        chart.x_axis.crosses = "autoZero"
-        chart.y_axis.crosses = "autoZero"
-    except Exception:
-        pass
 
     try:
         chart.visible_cells_only = False
     except Exception:
         pass
 
+    # Tarihleri kalin ve okunakli yaz.
+    # Not: openpyxl kategori ekseninde tek tek sadece Cmt/Paz etiketine
+    # farkli font veremiyor. Bu nedenle tum tarih etiketleri kalin;
+    # hafta sonu etiketleri zaten "Cmt" / "Paz" ibaresiyle ayriliyor.
     try:
         chart.x_axis.txPr = RichText(
             bodyPr=RichTextProperties(rot=-2700000),
             p=[
                 Paragraph(
                     pPr=ParagraphProperties(
-                        defRPr=CharacterProperties(sz=700)
+                        defRPr=CharacterProperties(sz=700, b=True)
                     ),
-                    endParaRPr=CharacterProperties(sz=700),
-                )
-            ],
-        )
-        chart.y_axis.txPr = RichText(
-            bodyPr=RichTextProperties(),
-            p=[
-                Paragraph(
-                    pPr=ParagraphProperties(
-                        defRPr=CharacterProperties(sz=700)
-                    ),
-                    endParaRPr=CharacterProperties(sz=700),
+                    endParaRPr=CharacterProperties(sz=700, b=True),
                 )
             ],
         )
@@ -1428,12 +1414,12 @@ def _build_summary_sheet(wb, latest_run_at, latest_rows, history):
                 chart.dLbls.numFmt = "0.00%"
                 chart.dLbls.dLblPos = "t"
 
-                # Tarih ve Y ekseni etiketlerini ayrıca zorla görünür tut.
+                # X eksenindeki tarihleri görünür tut; Y ekseni gizli kalır.
                 chart.x_axis.delete = False
                 chart.x_axis.tickLblPos = "low"
                 chart.x_axis.tickLblSkip = 1
-                chart.y_axis.delete = False
-                chart.y_axis.tickLblPos = "nextTo"
+                chart.x_axis.tickMarkSkip = 1
+                chart.y_axis.delete = True
 
                 ws.add_chart(chart, f"{GRAPH_COLS[product_index]}{bank_row}")
 
