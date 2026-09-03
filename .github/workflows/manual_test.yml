@@ -2,10 +2,10 @@ name: Kur Takip - Günlük
 
 on:
   workflow_dispatch:
-  
-   schedule:
-  # Her gün 10:00 Türkiye saati = 07:00 UTC
-  - cron: "0 7 * * *"
+  schedule:
+    # Her gün Türkiye saatiyle 10:00'da çalışır.
+    # GitHub cron UTC kullandığı için 07:00 UTC = 10:00 Türkiye.
+    - cron: "0 7 * * *"
 
 permissions:
   contents: write
